@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ================================================
+   DILLANCI DESIGN SYSTEM - SAHEL PALETTE
+   "Warm Industrial" aesthetic honoring West African trading heritage
+   ================================================ */
+
+@theme {
+  /* Primary Colors - Desert Clay */
+  --color-primary-50: #fdf8f3;
+  --color-primary-100: #FDF5E6;   /* OldLace */
+  --color-primary-200: #f5e6d3;
+  --color-primary-300: #D4A84B;   /* Golden accent */
+  --color-primary-400: #c48a3f;
+  --color-primary-500: #B8860B;   /* DarkGoldenRod - Interactive */
+  --color-primary-600: #9a7009;
+  --color-primary-700: #8B4513;   /* SaddleBrown - Primary brand */
+  --color-primary-800: #6b3410;
+  --color-primary-900: #4a2c17;   /* Deep brown - Headers */
+  --color-primary-950: #2d1a0e;
+
+  /* Accent Colors - Indigo Dye */
+  --color-accent-300: #6b9ac4;
+  --color-accent-500: #2d5a87;    /* Primary blue */
+  --color-accent-700: #1e3a5f;    /* Deep indigo */
+
+  /* Semantic Colors */
+  --color-success: #2d6a4f;
+  --color-warning: #e07b39;
+  --color-error: #c1292e;
+  --color-info: #2d5a87;
+
+  /* Neutral Colors - Warm grays */
+  --color-neutral-50: #faf9f7;
+  --color-neutral-100: #f5f3f0;
+  --color-neutral-200: #e8e4df;
+  --color-neutral-300: #d4cfc7;
+  --color-neutral-400: #a8a093;
+  --color-neutral-500: #7c7468;
+  --color-neutral-600: #5c554b;
+  --color-neutral-700: #3d3830;
+  --color-neutral-800: #2a2520;
+  --color-neutral-900: #1a1614;
+  --color-neutral-950: #0d0b0a;
+
+  /* Typography */
+  --font-family-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Spacing */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows - Warm brown tints */
+  --shadow-sm: 0 1px 2px rgba(74, 44, 23, 0.06);
+  --shadow-md: 0 4px 6px rgba(74, 44, 23, 0.08);
+  --shadow-lg: 0 10px 15px rgba(74, 44, 23, 0.1);
+  --shadow-xl: 0 20px 25px rgba(74, 44, 23, 0.12);
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 64px;
+}
+
+/* Base Styles */
+@layer base {
+  :root {
+    --background: var(--color-neutral-50);
+    --foreground: var(--color-neutral-900);
+    --muted: var(--color-neutral-100);
+    --muted-foreground: var(--color-neutral-500);
+    --border: var(--color-neutral-200);
+    --input: var(--color-neutral-200);
+    --ring: var(--color-primary-500);
+  }
+
+  .dark {
+    --background: #1a1410;           /* Warm dark brown */
+    --foreground: #f5f0e8;           /* Warm white */
+    --muted: #2a2018;
+    --muted-foreground: var(--color-neutral-400);
+    --border: #3a3020;
+    --input: #3a3020;
+    --ring: var(--color-primary-400);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-family-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    margin: 0;
+  }
+
+  /* Focus ring styles */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  /* Card styles */
+  .card {
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+  }
+
+  .dark .card {
+    background-color: var(--muted);
+  }
+
+  /* Status badge colors */
+  .status-draft {
+    background-color: var(--color-neutral-200);
+    color: var(--color-neutral-700);
+  }
+
+  .status-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-active {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-completed {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .status-cancelled {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+}

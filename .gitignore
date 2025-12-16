@@ -166,3 +166,26 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# =============================================================================
+# Frontend (Node.js / React)
+# =============================================================================
+
+# Dependencies
+frontend/node_modules/
+node_modules/
+
+# Build output
+frontend/dist/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files (frontend)
+frontend/.env.local
+frontend/.env.*.local
+
+# Editor directories and files
+*.local

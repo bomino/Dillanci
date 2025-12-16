@@ -1,0 +1,194 @@
+# Dillanci - Enterprise Procurement Platform
+# Docker Compose for full-stack development and production
+#
+# Usage:
+#   Development: docker-compose up -d
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   Stop:        docker-compose down
+#   Logs:        docker-compose logs -f [service]
+#   Rebuild:     docker-compose up -d --build
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Database - PostgreSQL
+  # ===========================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: dillanci-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dillanci}
+      POSTGRES_USER: ${POSTGRES_USER:-dillanci}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dillanci_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dillanci} -d ${POSTGRES_DB:-dillanci}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dillanci-network
+
+  # ===========================================================================
+  # Cache - Redis
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: dillanci-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dillanci-network
+
+  # ===========================================================================
+  # Backend - Django REST API
+  # ===========================================================================
+  backend:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: dillanci-backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80,http://frontend}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
+    volumes:
+      - ./dillanci-backend:/app
+      - backend_static:/app/staticfiles
+      - backend_media:/app/mediafiles
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - dillanci-network
+
+  # ===========================================================================
+  # Frontend - React + Vite (Development)
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./dillanci-frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: dillanci-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=/api/v1
+      - VITE_MOCK_API=${VITE_MOCK_API:-false}
+    volumes:
+      - ./dillanci-frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    networks:
+      - dillanci-network
+
+  # ===========================================================================
+  # Celery Worker - Background Tasks
+  # ===========================================================================
+  celery:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: dillanci-celery
+    restart: unless-stopped
+    command: celery -A config worker -l INFO
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
+    volumes:
+      - ./dillanci-backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - dillanci-network
+
+  # ===========================================================================
+  # Celery Beat - Scheduled Tasks
+  # ===========================================================================
+  celery-beat:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: dillanci-celery-beat
+    restart: unless-stopped
+    command: celery -A config beat -l INFO
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
+    volumes:
+      - ./dillanci-backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - dillanci-network
+
+# ===========================================================================
+# Networks
+# ===========================================================================
+networks:
+  dillanci-network:
+    driver: bridge
+
+# ===========================================================================
+# Volumes
+# ===========================================================================
+volumes:
+  postgres_data:
+    name: dillanci-postgres-data
+  redis_data:
+    name: dillanci-redis-data
+  backend_static:
+    name: dillanci-backend-static
+  backend_media:
+    name: dillanci-backend-media

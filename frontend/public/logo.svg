@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <!-- Gradient using Sahel palette -->
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B4513"/>
+      <stop offset="50%" stop-color="#B8860B"/>
+      <stop offset="100%" stop-color="#8B4513"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(100, 100)">
+    <!-- Celtic knot pattern - recreated from the reference image -->
+    <!-- Top loop -->
+    <path d="M0,-75 C20,-75 35,-60 35,-40 C35,-20 20,-10 0,-10"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M0,-75 C-20,-75 -35,-60 -35,-40 C-35,-20 -20,-10 0,-10"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- Bottom loop -->
+    <path d="M0,75 C20,75 35,60 35,40 C35,20 20,10 0,10"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M0,75 C-20,75 -35,60 -35,40 C-35,20 -20,10 0,10"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- Left loop -->
+    <path d="M-75,0 C-75,20 -60,35 -40,35 C-20,35 -10,20 -10,0"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M-75,0 C-75,-20 -60,-35 -40,-35 C-20,-35 -10,-20 -10,0"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- Right loop -->
+    <path d="M75,0 C75,20 60,35 40,35 C20,35 10,20 10,0"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M75,0 C75,-20 60,-35 40,-35 C20,-35 10,-20 10,0"
+          stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- Diagonal interlacing lines - top-left to bottom-right -->
+    <path d="M-50,-50 L50,50" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M-35,-50 L50,35" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M-50,-35 L35,50" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Diagonal interlacing lines - top-right to bottom-left -->
+    <path d="M50,-50 L-50,50" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M35,-50 L-50,35" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M50,-35 L-35,50" stroke="url(#logoGradient)" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

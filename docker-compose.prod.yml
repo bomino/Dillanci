@@ -1,0 +1,129 @@
+# Dillanci - Enterprise Procurement Platform
+# Production Docker Compose Override
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overrides development settings for production deployment
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Database - Production Settings
+  # ===========================================================================
+  db:
+    restart: always
+    # In production, consider using managed database service (RDS, Cloud SQL)
+    # and removing this service
+
+  # ===========================================================================
+  # Cache - Production Settings
+  # ===========================================================================
+  redis:
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    # In production, consider using managed Redis (ElastiCache, Redis Cloud)
+
+  # ===========================================================================
+  # Backend - Production Settings
+  # ===========================================================================
+  backend:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      # Email settings
+      - EMAIL_HOST=${EMAIL_HOST:-}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      # AWS S3 settings (for document storage)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME:-}
+      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
+    volumes:
+      # Remove code volume mount in production
+      - backend_static:/app/staticfiles
+      - backend_media:/app/mediafiles
+    # Don't expose port directly - use nginx/load balancer
+    ports: []
+    expose:
+      - "8000"
+
+  # ===========================================================================
+  # Frontend - Production Settings (Nginx serving static files)
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./dillanci-frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_API_URL=/api/v1
+        - VITE_MOCK_API=false
+    restart: always
+    volumes: []
+    # Serve on port 80 in production
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+  # ===========================================================================
+  # Celery Worker - Production Settings
+  # ===========================================================================
+  celery:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    command: celery -A config worker -l WARNING --concurrency=4
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+    volumes: []
+
+  # ===========================================================================
+  # Celery Beat - Production Settings
+  # ===========================================================================
+  celery-beat:
+    build:
+      context: ./dillanci-backend
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    command: celery -A config beat -l WARNING
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+    volumes: []
+
+# ===========================================================================
+# Production Volumes (no code mounts)
+# ===========================================================================
+volumes:
+  postgres_data:
+    name: dillanci-postgres-data-prod
+  redis_data:
+    name: dillanci-redis-data-prod
+  backend_static:
+    name: dillanci-backend-static-prod
+  backend_media:
+    name: dillanci-backend-media-prod
