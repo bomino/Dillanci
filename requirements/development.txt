@@ -1,0 +1,22 @@
+# Include test requirements (which includes base)
+-r test.txt
+
+# Code Quality
+black>=24.1
+isort>=5.13
+flake8>=7.0
+mypy>=1.8
+django-stubs>=4.2
+djangorestframework-stubs>=3.14
+
+# Pre-commit
+pre-commit>=3.6
+
+# Development Tools
+ipython>=8.20
+django-debug-toolbar>=4.2
+django-extensions>=3.2
+
+# Documentation
+mkdocs>=1.5
+mkdocs-material>=9.5
