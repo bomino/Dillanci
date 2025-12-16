@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { DashboardLayout } from '@/components/layout';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
+import { SuppliersPage, SupplierDetailPage, CreateSupplierPage } from '@/pages/suppliers';
 import { Toaster } from '@/components/ui/toast';
 
 // Create a client
@@ -57,7 +58,10 @@ function App() {
               <Route path="/purchase-orders" element={<PlaceholderPage title="Purchase Orders" />} />
               <Route path="/receiving" element={<PlaceholderPage title="Receiving" />} />
               <Route path="/invoices" element={<PlaceholderPage title="Invoices" />} />
-              <Route path="/suppliers" element={<PlaceholderPage title="Suppliers" />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/suppliers/new" element={<CreateSupplierPage />} />
+              <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+              <Route path="/suppliers/:id/edit" element={<SupplierDetailPage />} />
               <Route path="/contracts" element={<PlaceholderPage title="Contracts" />} />
               <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
               <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
