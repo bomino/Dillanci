@@ -46,25 +46,29 @@ Dillanci is a comprehensive enterprise procurement platform designed to streamli
 
 ```
 Dillanci/
-├── apps/                      # Django apps
-│   ├── core/                  # Base models, exceptions
-│   ├── users/                 # User management
-│   ├── organizations/         # Multi-tenant orgs
-│   ├── suppliers/             # Supplier management
-│   ├── catalog/               # Product catalog
-│   ├── budget/                # Budget & encumbrances
-│   ├── requisitions/          # Purchase requisitions
-│   ├── rfqs/                  # Request for quotation
-│   ├── rfps/                  # Request for proposal
-│   ├── purchase_orders/       # Purchase orders
-│   ├── receiving/             # Goods receipts
-│   ├── invoices/              # Invoice processing
-│   ├── contracts/             # Contract management
-│   ├── audit/                 # Audit logging
-│   ├── documents/             # Document management
-│   └── reports/               # Reporting & analytics
-├── config/                    # Django settings
-├── requirements/              # Python dependencies
+├── backend/                   # Django REST API
+│   ├── apps/                  # Django apps
+│   │   ├── core/              # Base models, exceptions
+│   │   ├── users/             # User management
+│   │   ├── organizations/     # Multi-tenant orgs
+│   │   ├── suppliers/         # Supplier management
+│   │   ├── catalog/           # Product catalog
+│   │   ├── budget/            # Budget & encumbrances
+│   │   ├── requisitions/      # Purchase requisitions
+│   │   ├── rfqs/              # Request for quotation
+│   │   ├── rfps/              # Request for proposal
+│   │   ├── purchase_orders/   # Purchase orders
+│   │   ├── receiving/         # Goods receipts
+│   │   ├── invoices/          # Invoice processing
+│   │   ├── contracts/         # Contract management
+│   │   ├── audit/             # Audit logging
+│   │   ├── documents/         # Document management
+│   │   └── reports/           # Reporting & analytics
+│   ├── config/                # Django settings
+│   ├── requirements/          # Python dependencies
+│   ├── tests/                 # Test utilities & factories
+│   ├── Dockerfile             # Backend Docker image
+│   └── manage.py              # Django CLI
 │
 ├── frontend/                  # React SPA
 │   ├── src/
@@ -75,10 +79,12 @@ Dillanci/
 │   │   ├── stores/            # Zustand stores
 │   │   ├── lib/               # Utilities & API clients
 │   │   └── types/             # TypeScript types
-│   └── public/                # Static assets
+│   ├── public/                # Static assets
+│   └── Dockerfile             # Frontend Docker image
 │
 ├── docker-compose.yml         # Development Docker setup
-└── docker-compose.prod.yml    # Production Docker setup
+├── docker-compose.prod.yml    # Production Docker setup
+└── README.md                  # This file
 ```
 
 ## Getting Started
@@ -116,6 +122,8 @@ Dillanci/
 
 #### Backend Setup
 ```bash
+cd backend
+
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
@@ -186,6 +194,7 @@ The API follows REST conventions with the following base endpoints:
 
 ### Backend Tests
 ```bash
+cd backend
 pytest --cov=apps --cov-report=term-missing
 ```
 

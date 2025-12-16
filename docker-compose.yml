@@ -59,7 +59,7 @@ services:
   # ===========================================================================
   backend:
     build:
-      context: ./dillanci-backend
+      context: ./backend
       dockerfile: Dockerfile
       target: development
     container_name: dillanci-backend
@@ -73,7 +73,7 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80,http://frontend}
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
     volumes:
-      - ./dillanci-backend:/app
+      - ./backend:/app
       - backend_static:/app/staticfiles
       - backend_media:/app/mediafiles
     ports:
@@ -97,7 +97,7 @@ services:
   # ===========================================================================
   frontend:
     build:
-      context: ./dillanci-frontend
+      context: ./frontend
       dockerfile: Dockerfile
       target: development
     container_name: dillanci-frontend
@@ -106,7 +106,7 @@ services:
       - VITE_API_URL=/api/v1
       - VITE_MOCK_API=${VITE_MOCK_API:-false}
     volumes:
-      - ./dillanci-frontend:/app
+      - ./frontend:/app
       - /app/node_modules
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -120,7 +120,7 @@ services:
   # ===========================================================================
   celery:
     build:
-      context: ./dillanci-backend
+      context: ./backend
       dockerfile: Dockerfile
       target: development
     container_name: dillanci-celery
@@ -133,7 +133,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
     volumes:
-      - ./dillanci-backend:/app
+      - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
@@ -149,7 +149,7 @@ services:
   # ===========================================================================
   celery-beat:
     build:
-      context: ./dillanci-backend
+      context: ./backend
       dockerfile: Dockerfile
       target: development
     container_name: dillanci-celery-beat
@@ -162,7 +162,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
     volumes:
-      - ./dillanci-backend:/app
+      - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
