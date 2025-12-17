@@ -10,11 +10,9 @@ import {
   Command,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUIStore } from '@/stores/ui-store';
-import { Button, Input } from '@/components/ui';
 
 export function Header() {
   const navigate = useNavigate();

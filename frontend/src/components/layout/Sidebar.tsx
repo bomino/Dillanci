@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -42,7 +42,6 @@ const bottomNavItems: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
 
   return (

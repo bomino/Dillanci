@@ -31,12 +31,12 @@ const supplierSchema = z.object({
   city: z.string().max(100).nullable().optional(),
   state: z.string().max(100).nullable().optional(),
   postal_code: z.string().max(20).nullable().optional(),
-  country: z.string().max(100).default('USA'),
+  country: z.string().max(100),
   phone: z.string().max(30).nullable().optional(),
   email: z.string().email('Invalid email address').nullable().optional().or(z.literal('')),
   website: z.string().url('Invalid URL').nullable().optional().or(z.literal('')),
-  payment_terms: z.string().max(50).default('NET30'),
-  currency: z.string().max(3).default('USD'),
+  payment_terms: z.string().max(50),
+  currency: z.string().max(3),
 });
 
 type SupplierFormData = z.infer<typeof supplierSchema>;
@@ -133,7 +133,7 @@ export default function SupplierForm({
               <Input
                 {...register('name')}
                 placeholder="Enter supplier name"
-                error={!!errors.name}
+                error={errors.name?.message}
               />
             </FormField>
 
@@ -215,7 +215,7 @@ export default function SupplierForm({
                 type="email"
                 {...register('email')}
                 placeholder="contact@supplier.com"
-                error={!!errors.email}
+                error={errors.email?.message}
               />
             </FormField>
 
@@ -230,7 +230,7 @@ export default function SupplierForm({
               <Input
                 {...register('website')}
                 placeholder="https://www.supplier.com"
-                error={!!errors.website}
+                error={errors.website?.message}
               />
             </FormField>
           </div>

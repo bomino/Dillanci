@@ -195,7 +195,7 @@ export function ActivityFeed({
                       config.bgColor,
                       config.color
                     )}>
-                      {React.cloneElement(config.icon as React.ReactElement, { className: 'h-2.5 w-2.5' })}
+                      {React.cloneElement(config.icon as React.ReactElement<{ className?: string }>, { className: 'h-2.5 w-2.5' })}
                     </div>
                   </div>
 

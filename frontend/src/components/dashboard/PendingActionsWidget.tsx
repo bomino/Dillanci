@@ -124,7 +124,7 @@ export function PendingActionsWidget({
                   <p className="font-medium text-neutral-900">
                     {formatCurrency(action.amount)}
                   </p>
-                  <StatusBadge status={action.status} size="sm" />
+                  <StatusBadge status={action.status} className="text-xs" />
                 </div>
               </motion.div>
             ))}

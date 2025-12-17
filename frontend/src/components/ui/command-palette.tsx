@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { Search, X, FileText, Users, ShoppingCart, Building2, History, Plus, Settings, LogOut } from 'lucide-react';
+import { Search, FileText, Users, ShoppingCart, Building2, History, Plus, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent } from './dialog';
@@ -20,6 +20,9 @@ function useCommand() {
   }
   return context;
 }
+
+// Export useCommand for external usage
+export { useCommand };
 
 // Base Command components
 const Command = React.forwardRef<

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -40,7 +40,7 @@ import {
   supplierTypeConfig,
 } from '@/lib/api/suppliers';
 import type { SupplierPayload } from '@/lib/api/suppliers';
-import { formatDate, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 export default function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -477,7 +477,7 @@ export default function SupplierDetailPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
             >

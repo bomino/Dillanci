@@ -5,7 +5,6 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUIStore } from '@/stores/ui-store';
-import { cn } from '@/lib/utils';
 import { CommandPalette } from '@/components/ui';
 
 export function DashboardLayout() {

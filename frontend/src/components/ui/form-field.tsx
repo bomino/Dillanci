@@ -65,7 +65,7 @@ function FormField<
         <FormFieldContext.Provider value={{ id, name, error }}>
           <div className={cn('space-y-2', className)}>
             {label && (
-              <Label htmlFor={id} required={required} error={!!error}>
+              <Label htmlFor={id} required={required} className={error ? 'text-error' : undefined}>
                 {label}
               </Label>
             )}
@@ -111,7 +111,7 @@ function FieldWrapper({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <Label htmlFor={fieldId} required={required} error={!!error}>
+        <Label htmlFor={fieldId} required={required} className={error ? 'text-error' : undefined}>
           {label}
         </Label>
       )}

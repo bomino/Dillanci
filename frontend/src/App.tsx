@@ -6,6 +6,16 @@ import { DashboardLayout } from '@/components/layout';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { SuppliersPage, SupplierDetailPage, CreateSupplierPage } from '@/pages/suppliers';
+import { RequisitionsPage, RequisitionDetailPage, CreateRequisitionPage } from '@/pages/requisitions';
+import { RFQsPage, RFQDetailPage, CreateRFQPage } from '@/pages/rfqs';
+import { PurchaseOrdersPage, PODetailPage, CreatePOPage } from '@/pages/purchase-orders';
+import { ReceivingPage, ReceivingDetailPage, CreateReceivingPage } from '@/pages/receiving';
+import { InvoicesPage, InvoiceDetailPage, CreateInvoicePage } from '@/pages/invoices';
+import { ContractsPage, ContractDetailPage, CreateContractPage } from '@/pages/contracts';
+import { RFPsPage, RFPDetailPage, CreateRFPPage } from '@/pages/rfps';
+import { ReportsPage } from '@/pages/reports';
+import { SettingsPage } from '@/pages/settings';
+import { ProfilePage } from '@/pages/profile';
 import { Toaster } from '@/components/ui/toast';
 
 // Create a client
@@ -21,23 +31,13 @@ const queryClient = new QueryClient({
 
 // Auth check component
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { checkAuth, isLoading } = useAuthStore();
+  const { checkAuth } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
   return <>{children}</>;
-}
-
-// Placeholder pages for routes
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
-      <p className="text-neutral-500">This page is under construction.</p>
-    </div>
-  );
 }
 
 function App() {
@@ -52,20 +52,41 @@ function App() {
             {/* Protected routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/requisitions" element={<PlaceholderPage title="Requisitions" />} />
-              <Route path="/rfqs" element={<PlaceholderPage title="RFQs" />} />
-              <Route path="/rfps" element={<PlaceholderPage title="RFPs" />} />
-              <Route path="/purchase-orders" element={<PlaceholderPage title="Purchase Orders" />} />
-              <Route path="/receiving" element={<PlaceholderPage title="Receiving" />} />
-              <Route path="/invoices" element={<PlaceholderPage title="Invoices" />} />
+              <Route path="/requisitions" element={<RequisitionsPage />} />
+              <Route path="/requisitions/new" element={<CreateRequisitionPage />} />
+              <Route path="/requisitions/:id" element={<RequisitionDetailPage />} />
+              <Route path="/requisitions/:id/edit" element={<RequisitionDetailPage />} />
+              <Route path="/rfqs" element={<RFQsPage />} />
+              <Route path="/rfqs/new" element={<CreateRFQPage />} />
+              <Route path="/rfqs/:id" element={<RFQDetailPage />} />
+              <Route path="/rfqs/:id/edit" element={<RFQDetailPage />} />
+              <Route path="/rfps" element={<RFPsPage />} />
+              <Route path="/rfps/new" element={<CreateRFPPage />} />
+              <Route path="/rfps/:id" element={<RFPDetailPage />} />
+              <Route path="/rfps/:id/edit" element={<RFPDetailPage />} />
+              <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+              <Route path="/purchase-orders/new" element={<CreatePOPage />} />
+              <Route path="/purchase-orders/:id" element={<PODetailPage />} />
+              <Route path="/purchase-orders/:id/edit" element={<PODetailPage />} />
+              <Route path="/receiving" element={<ReceivingPage />} />
+              <Route path="/receiving/new" element={<CreateReceivingPage />} />
+              <Route path="/receiving/:id" element={<ReceivingDetailPage />} />
+              <Route path="/receiving/:id/edit" element={<ReceivingDetailPage />} />
+              <Route path="/invoices" element={<InvoicesPage />} />
+              <Route path="/invoices/new" element={<CreateInvoicePage />} />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceDetailPage />} />
               <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/suppliers/new" element={<CreateSupplierPage />} />
               <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
               <Route path="/suppliers/:id/edit" element={<SupplierDetailPage />} />
-              <Route path="/contracts" element={<PlaceholderPage title="Contracts" />} />
-              <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
-              <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
-              <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
+              <Route path="/contracts" element={<ContractsPage />} />
+              <Route path="/contracts/new" element={<CreateContractPage />} />
+              <Route path="/contracts/:id" element={<ContractDetailPage />} />
+              <Route path="/contracts/:id/edit" element={<ContractDetailPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
 
             {/* Redirect root to dashboard */}

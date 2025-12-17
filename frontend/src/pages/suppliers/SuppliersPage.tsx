@@ -477,7 +477,7 @@ export default function SuppliersPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={handleDeleteConfirm}
               disabled={deleteMutation.isPending}
             >
