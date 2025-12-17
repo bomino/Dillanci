@@ -660,3 +660,43 @@ export interface RFPFilters extends PaginationParams {
   category?: RFPCategory;
   search?: string;
 }
+
+// =============================================================================
+// Notification Types
+// =============================================================================
+
+export type NotificationStatus = 'UNREAD' | 'READ' | 'ARCHIVED';
+
+export type NotificationType =
+  | 'APPROVAL_REQUIRED'      // Document needs your approval
+  | 'APPROVAL_COMPLETED'     // Your document was approved
+  | 'APPROVAL_REJECTED'      // Your document was rejected
+  | 'DOCUMENT_SUBMITTED'     // Document submitted for review
+  | 'BID_RECEIVED'           // New bid on your RFQ/RFP
+  | 'CONTRACT_EXPIRING'      // Contract approaching expiration
+  | 'INVOICE_MATCHED'        // Invoice passed 3-way matching
+  | 'GOODS_RECEIVED'         // Goods receipt posted
+  | 'BUDGET_ALERT'           // Budget threshold reached
+  | 'SYSTEM_ALERT';          // System-wide announcements
+
+export type NotificationPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  status: NotificationStatus;
+  priority: NotificationPriority;
+  related_object_type: string | null;  // 'requisition', 'purchase_order', etc.
+  related_object_id: string | null;
+  link: string | null;                  // URL to navigate to
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationSummary {
+  total: number;
+  unread: number;
+  urgent: number;
+}

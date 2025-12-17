@@ -21,7 +21,8 @@ src/
 ├── components/
 │   ├── ui/              # Base UI components (Button, Input, Card, etc.)
 │   ├── layout/          # Layout components (Sidebar, Header, DashboardLayout)
-│   └── auth/            # Authentication components (ProtectedRoute)
+│   ├── auth/            # Authentication components (ProtectedRoute)
+│   └── notifications/   # Notification system components
 ├── pages/
 │   ├── auth/            # Login page
 │   ├── dashboard/       # Dashboard
@@ -46,6 +47,7 @@ src/
 │   ├── api/             # API clients
 │   │   ├── client.ts    # Axios client
 │   │   ├── auth.ts      # Auth API
+│   │   ├── notifications.ts # Notifications API
 │   │   └── ...          # Module APIs
 │   └── utils.ts         # Utility functions
 ├── types/
@@ -355,6 +357,66 @@ export function MyFeaturePage() {
 }
 ```
 
+## Notification System
+
+The frontend includes an in-app notification system with real-time updates.
+
+### Features
+- **Bell icon with unread count** in the header navbar
+- **Dropdown notification panel** with scrollable list
+- **Type-specific icons and colors** for different notification types
+- **Priority indicators** (colored borders for urgent/high priority)
+- **Mark as read** - Single or all notifications
+- **Auto-refresh** via polling every 30 seconds
+- **Click to navigate** - Direct links to related documents
+
+### Notification Types
+
+| Type | Icon | Use Case |
+|------|------|----------|
+| `APPROVAL_REQUIRED` | AlertCircle (warning) | Document needs approval |
+| `APPROVAL_COMPLETED` | CheckCircle (success) | Document was approved |
+| `APPROVAL_REJECTED` | XCircle (error) | Document was rejected |
+| `DOCUMENT_SUBMITTED` | FileText (primary) | Document submitted for review |
+| `BID_RECEIVED` | FileText (primary) | New bid on RFQ/RFP |
+| `CONTRACT_EXPIRING` | Clock (warning) | Contract approaching expiration |
+| `INVOICE_MATCHED` | CheckSquare (success) | Invoice passed 3-way matching |
+| `GOODS_RECEIVED` | Package (info) | Goods receipt posted |
+| `BUDGET_ALERT` | DollarSign (warning) | Budget threshold reached |
+| `SYSTEM_ALERT` | Bell (neutral) | System announcements |
+
+### Using Notifications API
+
+```typescript
+import {
+  useNotifications,
+  useNotificationSummary,
+  useMarkAsRead,
+  useMarkAllAsRead
+} from '@/lib/api/notifications';
+
+function MyComponent() {
+  // Fetch all notifications (polls every 30s)
+  const { data: notifications, isLoading } = useNotifications();
+
+  // Get unread count for badges
+  const { data: summary } = useNotificationSummary();
+  console.log(summary?.unread); // number of unread
+
+  // Mark single notification as read
+  const markAsRead = useMarkAsRead();
+  markAsRead.mutate('notification-id');
+
+  // Mark all as read
+  const markAllAsRead = useMarkAllAsRead();
+  markAllAsRead.mutate();
+}
+```
+
+### Mock Mode
+
+When `VITE_MOCK_API=true`, notifications use mock data with 5 sample notifications of different types. This allows frontend development without a backend.
+
 ## Key Files
 
 | File | Purpose |
@@ -362,6 +424,8 @@ export function MyFeaturePage() {
 | `src/types/index.ts` | All TypeScript types including Permissions const |
 | `src/hooks/usePermissions.ts` | RBAC permission checking hook |
 | `src/components/auth/ProtectedRoute.tsx` | Route guards and inline permission components |
+| `src/components/notifications/` | Notification panel and item components |
+| `src/lib/api/notifications.ts` | Notification API hooks with polling |
 | `src/stores/auth-store.ts` | Authentication state with permissions |
 | `src/lib/api/auth.ts` | Auth API including permission fetching |
 | `src/components/layout/Sidebar.tsx` | Permission-filtered navigation |

@@ -23,6 +23,7 @@ Dillanci is a comprehensive enterprise procurement platform designed to streamli
 - **Audit Trail** - Comprehensive audit logging
 - **Documents** - Document management with versioning
 - **Reports** - Dashboard KPIs and analytics
+- **Notifications** - In-app notification system with real-time updates
 
 ## Tech Stack
 
@@ -74,7 +75,8 @@ Dillanci/
 │   ├── src/
 │   │   ├── components/        # UI components
 │   │   │   ├── ui/            # Base components (Button, Input, etc.)
-│   │   │   └── layout/        # Layout components (Sidebar, Header)
+│   │   │   ├── layout/        # Layout components (Sidebar, Header)
+│   │   │   └── notifications/ # Notification system components
 │   │   ├── pages/             # Page components
 │   │   ├── stores/            # Zustand stores
 │   │   ├── lib/               # Utilities & API clients

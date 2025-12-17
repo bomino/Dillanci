@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -13,12 +12,15 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUIStore } from '@/stores/ui-store';
+import { useNotificationSummary } from '@/lib/api/notifications';
+import { NotificationPanel } from '@/components/notifications';
 
 export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { sidebarCollapsed, setCommandPaletteOpen } = useUIStore();
-  const [notifications] = useState(3); // Mock notification count
+  const { data: notificationSummary } = useNotificationSummary();
+  const unreadCount = notificationSummary?.unread ?? 0;
 
   const handleLogout = async () => {
     await logout();
@@ -54,14 +56,28 @@ export function Header() {
       {/* Right side */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <button className="relative p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors">
-          <Bell className="h-5 w-5" />
-          {notifications > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-error text-white text-xs font-medium rounded-full flex items-center justify-center">
-              {notifications}
-            </span>
-          )}
-        </button>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button className="relative p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors">
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-error text-white text-xs font-medium rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          </DropdownMenu.Trigger>
+
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className="z-50"
+              sideOffset={8}
+              align="end"
+            >
+              <NotificationPanel />
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
 
         {/* User menu */}
         <DropdownMenu.Root>
