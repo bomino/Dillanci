@@ -426,7 +426,7 @@ Where:
 
 ---
 
-## 10. APPROVAL AUTHORITY
+## 10. APPROVAL AUTHORITY & RBAC
 
 ### 10.1 Pre-defined Roles (9 Presets)
 
@@ -442,7 +442,93 @@ Where:
 | **Auditor** | All view + audit.* | Internal/external auditors |
 | **Organization Admin** | user.*, admin.* | System administrators |
 
-### 10.2 Approval Thresholds
+### 10.2 Frontend RBAC Implementation
+
+The frontend implements comprehensive permission-based access control:
+
+#### Permission Checking Hook
+
+```typescript
+import { usePermissions } from '@/hooks/usePermissions';
+import { Permissions } from '@/types';
+
+function Component() {
+  const {
+    hasPermission,       // Check single permission
+    hasAnyPermission,    // Check if ANY of multiple permissions
+    hasAllPermissions,   // Check if ALL permissions present
+    hasRole,             // Check for specific role
+    hasAnyRole,          // Check for any of multiple roles
+    isAdmin,             // Is admin (is_staff && roles)
+    isSuperuser,         // Is superuser (full access)
+    isStaff,             // Is staff member
+    permissions,         // All user permissions
+    roles,               // All user roles
+    isLoading            // Auth state loading
+  } = usePermissions();
+}
+```
+
+#### Route Protection
+
+Routes are protected in `App.tsx` using `ProtectedRoute`:
+
+```tsx
+// Single permission
+<Route path="/requisitions/new" element={
+  <ProtectedRoute permission={Permissions.REQUISITION_CREATE}>
+    <CreateRequisitionPage />
+  </ProtectedRoute>
+} />
+
+// Any of multiple permissions
+<Route path="/requisitions" element={
+  <ProtectedRoute anyPermission={[Permissions.REQUISITION_VIEW, Permissions.REQUISITION_CREATE]}>
+    <RequisitionsPage />
+  </ProtectedRoute>
+} />
+
+// Admin routes
+<Route path="/admin/users" element={
+  <ProtectedRoute anyPermission={[Permissions.USER_VIEW, Permissions.USER_ASSIGN_ROLES]} requireAdmin>
+    <UsersPage />
+  </ProtectedRoute>
+} />
+```
+
+#### Inline Permission Guards
+
+For hiding UI elements:
+
+```tsx
+import { RequirePermission, RequireAdmin } from '@/components/auth/ProtectedRoute';
+
+// Hide create button if no permission
+<RequirePermission permission={Permissions.REQUISITION_CREATE}>
+  <Button>Create Requisition</Button>
+</RequirePermission>
+
+// Show fallback for non-admins
+<RequireAdmin fallback={<span>Admin access required</span>}>
+  <AdminSettingsPanel />
+</RequireAdmin>
+```
+
+#### Permission-Based Navigation
+
+The Sidebar filters navigation items based on permissions:
+
+```typescript
+const navItem = {
+  label: 'Requisitions',
+  href: '/requisitions',
+  anyPermission: [Permissions.REQUISITION_VIEW, Permissions.REQUISITION_CREATE],
+};
+
+// Only visible to users with requisition.view OR requisition.create
+```
+
+### 10.3 Approval Thresholds
 
 Configurable per organization and document type:
 
@@ -607,20 +693,61 @@ Day 30:  Payment processed (Net 15 terms)
 
 ## 14. FRONTEND ROUTES
 
-| Route | Purpose | Key Features |
-|-------|---------|--------------|
-| `/requisitions` | Requisition management | Create, submit, approve workflow |
-| `/rfqs` | RFQ management | Create RFQ, invite suppliers, award |
-| `/rfps` | RFP management | Complex scoring, multi-criteria |
-| `/purchase-orders` | PO management | Create from req/bid, send to supplier |
-| `/receiving` | Goods receipt | Record deliveries, update PO status |
-| `/invoices` | Invoice processing | 3-way match, approve for payment |
-| `/contracts` | Contract management | Terms, spend tracking, renewals |
-| `/suppliers` | Supplier database | Supplier master data |
-| `/admin/users` | User management | Create users, assign roles |
-| `/admin/roles` | Role management | Define roles, set permissions |
-| `/admin/workflows` | Approval thresholds | Configure approval rules |
-| `/admin/audit-logs` | Audit viewer | Search and export audit trail |
+### 14.1 Procurement Routes
+
+| Route | Purpose | Required Permissions |
+|-------|---------|---------------------|
+| `/dashboard` | Dashboard | *Any authenticated user* |
+| `/requisitions` | Requisition list | `requisition.view` OR `requisition.create` |
+| `/requisitions/new` | Create requisition | `requisition.create` |
+| `/requisitions/:id` | View requisition | `requisition.view` |
+| `/requisitions/:id/edit` | Edit requisition | `requisition.edit` |
+| `/rfqs` | RFQ list | `rfq.view` OR `rfq.create` |
+| `/rfqs/new` | Create RFQ | `rfq.create` |
+| `/rfqs/:id` | View RFQ | `rfq.view` |
+| `/rfps` | RFP list | `rfp.view` OR `rfp.create` |
+| `/rfps/new` | Create RFP | `rfp.create` |
+| `/rfps/:id` | View RFP | `rfp.view` |
+| `/purchase-orders` | PO list | `purchase_order.view` OR `purchase_order.create` |
+| `/purchase-orders/new` | Create PO | `purchase_order.create` |
+| `/purchase-orders/:id` | View PO | `purchase_order.view` |
+| `/receiving` | Goods receipt list | `receiving.view` OR `receiving.create` |
+| `/receiving/new` | Create receipt | `receiving.create` |
+| `/receiving/:id` | View receipt | `receiving.view` |
+| `/invoices` | Invoice list | `invoice.view` OR `invoice.create` |
+| `/invoices/new` | Create invoice | `invoice.create` |
+| `/invoices/:id` | View invoice | `invoice.view` |
+| `/suppliers` | Supplier list | `supplier.view` OR `supplier.create` |
+| `/suppliers/new` | Create supplier | `supplier.create` |
+| `/suppliers/:id` | View supplier | `supplier.view` |
+| `/contracts` | Contract list | `contract.view` OR `contract.create` |
+| `/contracts/new` | Create contract | `contract.create` |
+| `/contracts/:id` | View contract | `contract.view` |
+| `/reports` | Reports & analytics | `report.view` |
+| `/settings` | User settings | *Any authenticated user* |
+| `/profile` | User profile | *Any authenticated user* |
+
+### 14.2 Admin Routes
+
+All admin routes require `is_staff` status plus the specific permission:
+
+| Route | Purpose | Required Permissions |
+|-------|---------|---------------------|
+| `/admin/users` | User management | `user.view` OR `user.assign_roles` |
+| `/admin/users/:id` | User detail | `user.view` OR `user.assign_roles` |
+| `/admin/roles` | Role management | `admin.manage_roles` |
+| `/admin/roles/:id` | Role detail | `admin.manage_roles` |
+| `/admin/workflows` | Approval thresholds | `organization.manage_settings` |
+| `/admin/audit-logs` | Audit viewer | `audit.view` |
+| `/admin/organization` | Organization settings | `organization.view` OR `organization.edit` |
+
+### 14.3 Navigation Visibility
+
+The sidebar dynamically shows/hides navigation items based on user permissions:
+
+- **Main Navigation**: Items appear only if user has view OR create permission for that module
+- **Admin Section**: Only visible to staff users (`is_staff: true`) with at least one admin permission
+- **Superusers**: See all navigation items regardless of explicit permissions
 
 ---
 
@@ -646,11 +773,19 @@ Day 30:  Payment processed (Net 15 terms)
 
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Created | December 2024 |
+| Updated | December 2024 |
 | Platform | Dillanci Enterprise Procurement |
 | Authors | System Documentation |
 
+### Change Log
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | December 2024 | Initial workflow documentation |
+| 1.1 | December 2024 | Added frontend RBAC implementation details, updated route permissions |
+
 ---
 
-*This document provides a comprehensive overview of the Dillanci procurement workflow. For technical implementation details, refer to the backend model files and API documentation.*
+*This document provides a comprehensive overview of the Dillanci procurement workflow. For technical implementation details, refer to the backend model files and API documentation. For frontend RBAC implementation, see the [Frontend README](../frontend/README.md).*

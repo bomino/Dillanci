@@ -180,17 +180,89 @@ npm run dev
 | `DEBUG` | Django debug mode | `True` |
 | `SECRET_KEY` | Django secret key | - |
 
-## Admin Panel & RBAC
+## Role-Based Access Control (RBAC)
 
+Dillanci implements a comprehensive RBAC system with full backend and frontend integration.
+
+### Backend RBAC
 The Django Admin Panel provides comprehensive administration capabilities:
 
-### Admin Features
 - **User Management** - Create, edit, deactivate users with role badges
-- **Role-Based Access Control (RBAC)** - 9 pre-defined roles with 60+ permissions
+- **Role-Based Access Control** - 9 pre-defined roles with 60+ permissions
 - **Organization Management** - Multi-tenant organization setup with default roles
 - **Audit Logging** - Track all role changes and user actions
 
+### Frontend RBAC
+
+The React frontend implements complete permission-based access control:
+
+#### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `usePermissions` | `hooks/usePermissions.ts` | Hook for checking permissions, roles, admin status |
+| `ProtectedRoute` | `components/auth/ProtectedRoute.tsx` | Route guard with redirect |
+| `RequirePermission` | `components/auth/ProtectedRoute.tsx` | Inline permission check with fallback |
+| `RequireAdmin` | `components/auth/ProtectedRoute.tsx` | Admin-only content wrapper |
+
+#### Permission Checking
+
+```typescript
+// In any component
+import { usePermissions } from '@/hooks/usePermissions';
+import { Permissions } from '@/types';
+
+function MyComponent() {
+  const { hasPermission, hasAnyPermission, isAdmin, isSuperuser } = usePermissions();
+
+  // Single permission check
+  if (hasPermission(Permissions.REQUISITION_CREATE)) {
+    // Can create requisitions
+  }
+
+  // Multiple permissions (any)
+  if (hasAnyPermission([Permissions.PO_VIEW, Permissions.PO_CREATE])) {
+    // Can view or create POs
+  }
+
+  // Admin check
+  if (isAdmin) {
+    // Show admin features
+  }
+}
+```
+
+#### Route Protection
+
+```tsx
+// In App.tsx
+<Route path="/admin/users" element={
+  <ProtectedRoute
+    anyPermission={[Permissions.USER_VIEW, Permissions.USER_ASSIGN_ROLES]}
+    requireAdmin
+  >
+    <UsersPage />
+  </ProtectedRoute>
+} />
+```
+
+#### Inline Permission Guards
+
+```tsx
+// Hide UI elements based on permissions
+import { RequirePermission, RequireAdmin } from '@/components/auth/ProtectedRoute';
+
+<RequirePermission permission={Permissions.REQUISITION_CREATE}>
+  <Button>Create Requisition</Button>
+</RequirePermission>
+
+<RequireAdmin fallback={<span>Admin only</span>}>
+  <AdminPanel />
+</RequireAdmin>
+```
+
 ### Pre-defined Roles
+
 | Role | Description | Key Permissions |
 |------|-------------|-----------------|
 | Requester | Creates purchase requisitions | Create/view requisitions |
@@ -202,6 +274,25 @@ The Django Admin Panel provides comprehensive administration capabilities:
 | Finance Manager | Financial oversight | Full financial access |
 | Auditor | Read-only audit access | View all records |
 | Organization Admin | Full system access | All permissions |
+
+### Permission Categories (50+ Permissions)
+
+| Module | Permissions |
+|--------|-------------|
+| Users | view, create, edit, delete, activate, deactivate, assign_roles |
+| Organization | view, edit, manage_settings |
+| Suppliers | view, create, edit, delete, approve, suspend |
+| Requisitions | view, view_all, create, edit, delete, submit, approve, reject |
+| RFQs | view, create, edit, delete, publish, award, cancel |
+| RFPs | view, create, edit, delete, publish, evaluate, award |
+| Purchase Orders | view, view_all, create, edit, delete, submit, approve, reject, cancel, close |
+| Receiving | view, create, edit, complete |
+| Invoices | view, create, edit, delete, match, approve, reject, pay |
+| Contracts | view, create, edit, delete, approve, terminate, renew |
+| Budget | view, create, edit, approve, transfer |
+| Reports | view, export, advanced |
+| Audit | view, export |
+| Admin | full_access, manage_roles, view_all_orgs |
 
 ### Admin Login
 - URL: http://localhost:8000/admin/

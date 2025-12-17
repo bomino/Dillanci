@@ -21,34 +21,109 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui-store';
-import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Permissions } from '@/types';
 
 interface NavItem {
   label: string;
   icon: React.ReactNode;
   href: string;
   badge?: number;
+  /** Permission required to see this nav item */
+  permission?: string;
+  /** Multiple permissions - user needs ANY of these to see this item */
+  anyPermission?: string[];
 }
 
 const mainNavItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, href: '/dashboard' },
-  { label: 'Requisitions', icon: <FileText className="h-5 w-5" />, href: '/requisitions' },
-  { label: 'RFQs', icon: <FileQuestion className="h-5 w-5" />, href: '/rfqs' },
-  { label: 'RFPs', icon: <FileSignature className="h-5 w-5" />, href: '/rfps' },
-  { label: 'Purchase Orders', icon: <ShoppingCart className="h-5 w-5" />, href: '/purchase-orders' },
-  { label: 'Receiving', icon: <Package className="h-5 w-5" />, href: '/receiving' },
-  { label: 'Invoices', icon: <Receipt className="h-5 w-5" />, href: '/invoices' },
-  { label: 'Suppliers', icon: <Users className="h-5 w-5" />, href: '/suppliers' },
-  { label: 'Contracts', icon: <FileSignature className="h-5 w-5" />, href: '/contracts' },
-  { label: 'Reports', icon: <BarChart3 className="h-5 w-5" />, href: '/reports' },
+  {
+    label: 'Requisitions',
+    icon: <FileText className="h-5 w-5" />,
+    href: '/requisitions',
+    anyPermission: [Permissions.REQUISITION_VIEW, Permissions.REQUISITION_CREATE],
+  },
+  {
+    label: 'RFQs',
+    icon: <FileQuestion className="h-5 w-5" />,
+    href: '/rfqs',
+    anyPermission: [Permissions.RFQ_VIEW, Permissions.RFQ_CREATE],
+  },
+  {
+    label: 'RFPs',
+    icon: <FileSignature className="h-5 w-5" />,
+    href: '/rfps',
+    anyPermission: [Permissions.RFP_VIEW, Permissions.RFP_CREATE],
+  },
+  {
+    label: 'Purchase Orders',
+    icon: <ShoppingCart className="h-5 w-5" />,
+    href: '/purchase-orders',
+    anyPermission: [Permissions.PO_VIEW, Permissions.PO_CREATE],
+  },
+  {
+    label: 'Receiving',
+    icon: <Package className="h-5 w-5" />,
+    href: '/receiving',
+    anyPermission: [Permissions.RECEIVING_VIEW, Permissions.RECEIVING_CREATE],
+  },
+  {
+    label: 'Invoices',
+    icon: <Receipt className="h-5 w-5" />,
+    href: '/invoices',
+    anyPermission: [Permissions.INVOICE_VIEW, Permissions.INVOICE_CREATE],
+  },
+  {
+    label: 'Suppliers',
+    icon: <Users className="h-5 w-5" />,
+    href: '/suppliers',
+    anyPermission: [Permissions.SUPPLIER_VIEW, Permissions.SUPPLIER_CREATE],
+  },
+  {
+    label: 'Contracts',
+    icon: <FileSignature className="h-5 w-5" />,
+    href: '/contracts',
+    anyPermission: [Permissions.CONTRACT_VIEW, Permissions.CONTRACT_CREATE],
+  },
+  {
+    label: 'Reports',
+    icon: <BarChart3 className="h-5 w-5" />,
+    href: '/reports',
+    permission: Permissions.REPORT_VIEW,
+  },
 ];
 
 const adminNavItems: NavItem[] = [
-  { label: 'Users', icon: <UserCog className="h-5 w-5" />, href: '/admin/users' },
-  { label: 'Roles', icon: <Shield className="h-5 w-5" />, href: '/admin/roles' },
-  { label: 'Workflows', icon: <GitBranch className="h-5 w-5" />, href: '/admin/workflows' },
-  { label: 'Audit Logs', icon: <ClipboardList className="h-5 w-5" />, href: '/admin/audit-logs' },
-  { label: 'Organization', icon: <Building2 className="h-5 w-5" />, href: '/admin/organization' },
+  {
+    label: 'Users',
+    icon: <UserCog className="h-5 w-5" />,
+    href: '/admin/users',
+    anyPermission: [Permissions.USER_VIEW, Permissions.USER_ASSIGN_ROLES],
+  },
+  {
+    label: 'Roles',
+    icon: <Shield className="h-5 w-5" />,
+    href: '/admin/roles',
+    permission: Permissions.ADMIN_MANAGE_ROLES,
+  },
+  {
+    label: 'Workflows',
+    icon: <GitBranch className="h-5 w-5" />,
+    href: '/admin/workflows',
+    permission: Permissions.ORG_MANAGE_SETTINGS,
+  },
+  {
+    label: 'Audit Logs',
+    icon: <ClipboardList className="h-5 w-5" />,
+    href: '/admin/audit-logs',
+    permission: Permissions.AUDIT_VIEW,
+  },
+  {
+    label: 'Organization',
+    icon: <Building2 className="h-5 w-5" />,
+    href: '/admin/organization',
+    anyPermission: [Permissions.ORG_VIEW, Permissions.ORG_EDIT],
+  },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -93,10 +168,31 @@ function NavItemComponent({ item, sidebarCollapsed }: { item: NavItem; sidebarCo
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { user } = useAuthStore();
+  const { hasPermission, hasAnyPermission, isAdmin, isSuperuser } = usePermissions();
 
-  // Show admin section for staff/superusers
-  const showAdminSection = user?.is_staff || user?.is_superuser;
+  // Helper to check if nav item should be visible
+  const canViewNavItem = (item: NavItem): boolean => {
+    // Superusers can see everything
+    if (isSuperuser) return true;
+
+    // If no permission required, show to everyone
+    if (!item.permission && !item.anyPermission) return true;
+
+    // Check single permission
+    if (item.permission && hasPermission(item.permission)) return true;
+
+    // Check any permission
+    if (item.anyPermission && hasAnyPermission(item.anyPermission)) return true;
+
+    return false;
+  };
+
+  // Filter nav items based on permissions
+  const visibleMainNavItems = mainNavItems.filter(canViewNavItem);
+  const visibleAdminNavItems = adminNavItems.filter(canViewNavItem);
+
+  // Show admin section if user is admin AND has at least one visible admin item
+  const showAdminSection = isAdmin && visibleAdminNavItems.length > 0;
 
   return (
     <motion.aside
@@ -138,7 +234,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
         {/* Main navigation */}
         <ul className="space-y-1">
-          {mainNavItems.map((item) => (
+          {visibleMainNavItems.map((item) => (
             <li key={item.href}>
               <NavItemComponent item={item} sidebarCollapsed={sidebarCollapsed} />
             </li>
@@ -175,7 +271,7 @@ export function Sidebar() {
               </AnimatePresence>
             </div>
             <ul className="space-y-1">
-              {adminNavItems.map((item) => (
+              {visibleAdminNavItems.map((item) => (
                 <li key={item.href}>
                   <NavItemComponent item={item} sidebarCollapsed={sidebarCollapsed} />
                 </li>

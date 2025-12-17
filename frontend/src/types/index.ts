@@ -12,6 +12,166 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
+// =============================================================================
+// RBAC Types - Role-Based Access Control
+// =============================================================================
+
+// Permission codes - must match backend Permissions class
+export const Permissions = {
+  // User Management
+  USER_VIEW: 'user.view',
+  USER_CREATE: 'user.create',
+  USER_EDIT: 'user.edit',
+  USER_DELETE: 'user.delete',
+  USER_ACTIVATE: 'user.activate',
+  USER_DEACTIVATE: 'user.deactivate',
+  USER_ASSIGN_ROLES: 'user.assign_roles',
+
+  // Organization Management
+  ORG_VIEW: 'organization.view',
+  ORG_EDIT: 'organization.edit',
+  ORG_MANAGE_SETTINGS: 'organization.manage_settings',
+
+  // Supplier Management
+  SUPPLIER_VIEW: 'supplier.view',
+  SUPPLIER_CREATE: 'supplier.create',
+  SUPPLIER_EDIT: 'supplier.edit',
+  SUPPLIER_DELETE: 'supplier.delete',
+  SUPPLIER_APPROVE: 'supplier.approve',
+  SUPPLIER_SUSPEND: 'supplier.suspend',
+
+  // Requisition Management
+  REQUISITION_VIEW: 'requisition.view',
+  REQUISITION_VIEW_ALL: 'requisition.view_all',
+  REQUISITION_CREATE: 'requisition.create',
+  REQUISITION_EDIT: 'requisition.edit',
+  REQUISITION_DELETE: 'requisition.delete',
+  REQUISITION_SUBMIT: 'requisition.submit',
+  REQUISITION_APPROVE: 'requisition.approve',
+  REQUISITION_REJECT: 'requisition.reject',
+
+  // RFQ Management
+  RFQ_VIEW: 'rfq.view',
+  RFQ_CREATE: 'rfq.create',
+  RFQ_EDIT: 'rfq.edit',
+  RFQ_DELETE: 'rfq.delete',
+  RFQ_PUBLISH: 'rfq.publish',
+  RFQ_AWARD: 'rfq.award',
+  RFQ_CANCEL: 'rfq.cancel',
+
+  // RFP Management
+  RFP_VIEW: 'rfp.view',
+  RFP_CREATE: 'rfp.create',
+  RFP_EDIT: 'rfp.edit',
+  RFP_DELETE: 'rfp.delete',
+  RFP_PUBLISH: 'rfp.publish',
+  RFP_EVALUATE: 'rfp.evaluate',
+  RFP_AWARD: 'rfp.award',
+
+  // Purchase Order Management
+  PO_VIEW: 'purchase_order.view',
+  PO_VIEW_ALL: 'purchase_order.view_all',
+  PO_CREATE: 'purchase_order.create',
+  PO_EDIT: 'purchase_order.edit',
+  PO_DELETE: 'purchase_order.delete',
+  PO_SUBMIT: 'purchase_order.submit',
+  PO_APPROVE: 'purchase_order.approve',
+  PO_REJECT: 'purchase_order.reject',
+  PO_CANCEL: 'purchase_order.cancel',
+  PO_CLOSE: 'purchase_order.close',
+
+  // Receiving/Goods Receipt
+  RECEIVING_VIEW: 'receiving.view',
+  RECEIVING_CREATE: 'receiving.create',
+  RECEIVING_EDIT: 'receiving.edit',
+  RECEIVING_COMPLETE: 'receiving.complete',
+
+  // Invoice Management
+  INVOICE_VIEW: 'invoice.view',
+  INVOICE_CREATE: 'invoice.create',
+  INVOICE_EDIT: 'invoice.edit',
+  INVOICE_DELETE: 'invoice.delete',
+  INVOICE_MATCH: 'invoice.match',
+  INVOICE_APPROVE: 'invoice.approve',
+  INVOICE_REJECT: 'invoice.reject',
+  INVOICE_PAY: 'invoice.pay',
+
+  // Contract Management
+  CONTRACT_VIEW: 'contract.view',
+  CONTRACT_CREATE: 'contract.create',
+  CONTRACT_EDIT: 'contract.edit',
+  CONTRACT_DELETE: 'contract.delete',
+  CONTRACT_APPROVE: 'contract.approve',
+  CONTRACT_TERMINATE: 'contract.terminate',
+  CONTRACT_RENEW: 'contract.renew',
+
+  // Budget Management
+  BUDGET_VIEW: 'budget.view',
+  BUDGET_CREATE: 'budget.create',
+  BUDGET_EDIT: 'budget.edit',
+  BUDGET_APPROVE: 'budget.approve',
+  BUDGET_TRANSFER: 'budget.transfer',
+
+  // Reports
+  REPORT_VIEW: 'report.view',
+  REPORT_EXPORT: 'report.export',
+  REPORT_ADVANCED: 'report.advanced',
+
+  // Audit
+  AUDIT_VIEW: 'audit.view',
+  AUDIT_EXPORT: 'audit.export',
+
+  // System Administration
+  ADMIN_FULL_ACCESS: 'admin.full_access',
+  ADMIN_MANAGE_ROLES: 'admin.manage_roles',
+  ADMIN_VIEW_ALL_ORGS: 'admin.view_all_orgs',
+} as const;
+
+export type PermissionCode = typeof Permissions[keyof typeof Permissions];
+
+// Role types
+export type RoleType = 'SYSTEM' | 'ORGANIZATION' | 'CUSTOM';
+
+export interface Role {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  role_type: RoleType;
+  organization: string | null;
+  permissions: string[];
+  parent_role: string | null;
+  approval_limit: string | null;
+  currency: string;
+  is_active: boolean;
+  is_system_role: boolean;
+  created_at: string;
+  updated_at: string;
+  // Computed fields from API
+  user_count?: number;
+  permission_count?: number;
+}
+
+export interface UserRole {
+  id: string;
+  user: string;
+  role: string;
+  role_name: string;
+  role_code: string;
+  valid_from: string;
+  valid_to: string | null;
+  delegated_by: string | null;
+  delegated_by_name?: string;
+  custom_approval_limit: string | null;
+  assigned_by: string | null;
+  assigned_by_name?: string;
+  is_active: boolean;
+  is_valid: boolean;
+  is_delegated: boolean;
+  approval_limit: string | null;
+  created_at: string;
+}
+
 // User & Auth Types
 export interface User {
   id: string;
@@ -31,6 +191,9 @@ export interface User {
   // Legacy fields for backwards compatibility
   date_joined?: string;
   last_login?: string | null;
+  // RBAC fields
+  roles?: UserRole[];
+  permissions?: string[];
 }
 
 export interface LoginResponse {

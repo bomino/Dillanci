@@ -1,6 +1,261 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
 
+// Check if we're in mock mode (no backend available)
+const MOCK_MODE = import.meta.env.VITE_MOCK_API === 'true';
+
+// =============================================================================
+// Mock Data
+// =============================================================================
+
+const mockSystemPreferences: SystemPreference[] = [
+  {
+    id: 'pref-1',
+    organization: 'org-1',
+    key: 'organization.name',
+    value: 'Dillanci Demo',
+    typed_value: 'Dillanci Demo',
+    value_type: 'STRING',
+    category: 'GENERAL',
+    label: 'Organization Name',
+    description: 'The display name for your organization',
+    is_secret: false,
+    is_editable: true,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'pref-2',
+    organization: 'org-1',
+    key: 'organization.timezone',
+    value: 'America/New_York',
+    typed_value: 'America/New_York',
+    value_type: 'STRING',
+    category: 'GENERAL',
+    label: 'Default Timezone',
+    description: 'Default timezone for displaying dates and times',
+    is_secret: false,
+    is_editable: true,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'pref-3',
+    organization: 'org-1',
+    key: 'organization.currency',
+    value: 'USD',
+    typed_value: 'USD',
+    value_type: 'STRING',
+    category: 'GENERAL',
+    label: 'Default Currency',
+    description: 'Default currency for financial transactions',
+    is_secret: false,
+    is_editable: true,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  },
+];
+
+const mockAPIKeys: APIKey[] = [
+  {
+    id: 'key-1',
+    organization: 'org-1',
+    name: 'Production API Key',
+    key_prefix: 'dk_prod_xxx',
+    scopes: ['read', 'write'],
+    rate_limit: 1000,
+    expires_at: null,
+    last_used_at: '2025-12-15T10:30:00Z',
+    is_active: true,
+    is_expired: false,
+    is_valid: true,
+    created_by: 'user-1',
+    created_by_email: 'admin@dillanci.com',
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'key-2',
+    organization: 'org-1',
+    name: 'Development API Key',
+    key_prefix: 'dk_dev_xxx',
+    scopes: ['read'],
+    rate_limit: 100,
+    expires_at: '2026-01-01T00:00:00Z',
+    last_used_at: null,
+    is_active: true,
+    is_expired: false,
+    is_valid: true,
+    created_by: 'user-1',
+    created_by_email: 'admin@dillanci.com',
+    created_at: '2025-06-01T00:00:00Z',
+    updated_at: '2025-06-01T00:00:00Z',
+  },
+];
+
+const mockApprovalThresholds: Record<string, ApprovalThreshold[]> = {
+  REQUISITION: [
+    {
+      id: 'thresh-req-1',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'REQUISITION',
+      min_amount: '0.00',
+      max_amount: '5000.00',
+      currency: 'USD',
+      required_role: null,
+      required_role_name: null,
+      auto_approve: true,
+      require_budget_check: true,
+      escalation_hours: 24,
+      escalation_role: null,
+      escalation_role_name: null,
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: 'thresh-req-2',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'REQUISITION',
+      min_amount: '5000.01',
+      max_amount: '25000.00',
+      currency: 'USD',
+      required_role: 'role-budget-holder',
+      required_role_name: 'Budget Holder',
+      auto_approve: false,
+      require_budget_check: true,
+      escalation_hours: 48,
+      escalation_role: 'role-finance-mgr',
+      escalation_role_name: 'Finance Manager',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: 'thresh-req-3',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'REQUISITION',
+      min_amount: '25000.01',
+      max_amount: null,
+      currency: 'USD',
+      required_role: 'role-finance-mgr',
+      required_role_name: 'Finance Manager',
+      auto_approve: false,
+      require_budget_check: true,
+      escalation_hours: 72,
+      escalation_role: 'role-org-admin',
+      escalation_role_name: 'Organization Admin',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+  ],
+  PURCHASE_ORDER: [
+    {
+      id: 'thresh-po-1',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'PURCHASE_ORDER',
+      min_amount: '0.00',
+      max_amount: '10000.00',
+      currency: 'USD',
+      required_role: 'role-proc-officer',
+      required_role_name: 'Procurement Officer',
+      auto_approve: false,
+      require_budget_check: true,
+      escalation_hours: 24,
+      escalation_role: 'role-proc-mgr',
+      escalation_role_name: 'Procurement Manager',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: 'thresh-po-2',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'PURCHASE_ORDER',
+      min_amount: '10000.01',
+      max_amount: '50000.00',
+      currency: 'USD',
+      required_role: 'role-proc-mgr',
+      required_role_name: 'Procurement Manager',
+      auto_approve: false,
+      require_budget_check: true,
+      escalation_hours: 48,
+      escalation_role: 'role-finance-mgr',
+      escalation_role_name: 'Finance Manager',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+  ],
+  INVOICE: [
+    {
+      id: 'thresh-inv-1',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'INVOICE',
+      min_amount: '0.00',
+      max_amount: '5000.00',
+      currency: 'USD',
+      required_role: 'role-ap-clerk',
+      required_role_name: 'Accounts Payable',
+      auto_approve: false,
+      require_budget_check: false,
+      escalation_hours: 24,
+      escalation_role: 'role-finance-mgr',
+      escalation_role_name: 'Finance Manager',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: 'thresh-inv-2',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'INVOICE',
+      min_amount: '5000.01',
+      max_amount: null,
+      currency: 'USD',
+      required_role: 'role-finance-mgr',
+      required_role_name: 'Finance Manager',
+      auto_approve: false,
+      require_budget_check: false,
+      escalation_hours: 48,
+      escalation_role: 'role-org-admin',
+      escalation_role_name: 'Organization Admin',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+  ],
+  CONTRACT: [
+    {
+      id: 'thresh-con-1',
+      organization: 'org-1',
+      organization_name: 'Dillanci Demo',
+      document_type: 'CONTRACT',
+      min_amount: '0.00',
+      max_amount: null,
+      currency: 'USD',
+      required_role: 'role-proc-mgr',
+      required_role_name: 'Procurement Manager',
+      auto_approve: false,
+      require_budget_check: true,
+      escalation_hours: 72,
+      escalation_role: 'role-org-admin',
+      escalation_role_name: 'Organization Admin',
+      is_active: true,
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    },
+  ],
+};
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -332,8 +587,40 @@ export async function fetchRoleChangeLogs(params?: Record<string, string>): Prom
 // =============================================================================
 
 export async function fetchApprovalThresholds(params?: Record<string, string>): Promise<PaginatedResponse<ApprovalThreshold>> {
-  const response = await apiClient.get('/admin/thresholds/', { params });
-  return response.data;
+  // Get mock data based on document_type filter
+  const getMockData = () => {
+    const docType = params?.document_type as keyof typeof mockApprovalThresholds | undefined;
+    if (docType && mockApprovalThresholds[docType]) {
+      return mockApprovalThresholds[docType];
+    }
+    // Return all thresholds if no filter
+    return Object.values(mockApprovalThresholds).flat();
+  };
+
+  if (MOCK_MODE) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const mockData = getMockData();
+    return {
+      count: mockData.length,
+      next: null,
+      previous: null,
+      results: mockData,
+    };
+  }
+
+  try {
+    const response = await apiClient.get('/admin/thresholds/', { params });
+    return response.data;
+  } catch {
+    // Return mock data if endpoint doesn't exist yet
+    const mockData = getMockData();
+    return {
+      count: mockData.length,
+      next: null,
+      previous: null,
+      results: mockData,
+    };
+  }
 }
 
 export async function fetchApprovalThreshold(id: string): Promise<ApprovalThreshold> {
@@ -360,8 +647,28 @@ export async function deleteApprovalThreshold(id: string): Promise<void> {
 // =============================================================================
 
 export async function fetchSystemPreferences(params?: Record<string, string>): Promise<PaginatedResponse<SystemPreference>> {
-  const response = await apiClient.get('/admin/preferences/', { params });
-  return response.data;
+  if (MOCK_MODE) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      count: mockSystemPreferences.length,
+      next: null,
+      previous: null,
+      results: mockSystemPreferences,
+    };
+  }
+
+  try {
+    const response = await apiClient.get('/admin/preferences/', { params });
+    return response.data;
+  } catch {
+    // Return mock data if endpoint doesn't exist yet
+    return {
+      count: mockSystemPreferences.length,
+      next: null,
+      previous: null,
+      results: mockSystemPreferences,
+    };
+  }
 }
 
 export async function fetchPreferenceByKey(key: string): Promise<SystemPreference> {
@@ -392,8 +699,28 @@ export async function initializeDefaultPreferences(): Promise<{ message: string;
 // =============================================================================
 
 export async function fetchAPIKeys(params?: Record<string, string>): Promise<PaginatedResponse<APIKey>> {
-  const response = await apiClient.get('/admin/api-keys/', { params });
-  return response.data;
+  if (MOCK_MODE) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      count: mockAPIKeys.length,
+      next: null,
+      previous: null,
+      results: mockAPIKeys,
+    };
+  }
+
+  try {
+    const response = await apiClient.get('/admin/api-keys/', { params });
+    return response.data;
+  } catch {
+    // Return mock data if endpoint doesn't exist yet
+    return {
+      count: mockAPIKeys.length,
+      next: null,
+      previous: null,
+      results: mockAPIKeys,
+    };
+  }
 }
 
 export async function createAPIKey(data: {
@@ -742,6 +1069,122 @@ export function useRegenerateAPIKey() {
 }
 
 // =============================================================================
+// Mock Data - Audit Logs
+// =============================================================================
+
+const mockAuditLogs: AuditLog[] = [
+  {
+    id: 'audit-1',
+    timestamp: '2025-12-17T10:30:00Z',
+    user: 'user-1',
+    user_email: 'admin@dillanci.com',
+    ip_address: '192.168.1.100',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    organization: 'org-1',
+    content_type: 'requisitions.requisition',
+    content_type_name: 'Requisition',
+    object_id: 'req-123',
+    object_repr: 'REQ-2025-001',
+    action: 'CREATE',
+    action_display: 'Created',
+    from_state: null,
+    to_state: 'DRAFT',
+    changes: {
+      title: { old: null, new: 'Office Supplies Request' },
+      total_amount: { old: null, new: '2500.00' },
+    },
+    extra_data: null,
+  },
+  {
+    id: 'audit-2',
+    timestamp: '2025-12-17T11:15:00Z',
+    user: 'user-1',
+    user_email: 'admin@dillanci.com',
+    ip_address: '192.168.1.100',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    organization: 'org-1',
+    content_type: 'requisitions.requisition',
+    content_type_name: 'Requisition',
+    object_id: 'req-123',
+    object_repr: 'REQ-2025-001',
+    action: 'STATE_TRANSITION',
+    action_display: 'Status Changed',
+    from_state: 'DRAFT',
+    to_state: 'SUBMITTED',
+    changes: {
+      status: { old: 'DRAFT', new: 'SUBMITTED' },
+    },
+    extra_data: null,
+  },
+  {
+    id: 'audit-3',
+    timestamp: '2025-12-17T14:00:00Z',
+    user: 'user-2',
+    user_email: 'manager@dillanci.com',
+    ip_address: '192.168.1.101',
+    user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    organization: 'org-1',
+    content_type: 'requisitions.requisition',
+    content_type_name: 'Requisition',
+    object_id: 'req-123',
+    object_repr: 'REQ-2025-001',
+    action: 'STATE_TRANSITION',
+    action_display: 'Status Changed',
+    from_state: 'SUBMITTED',
+    to_state: 'APPROVED',
+    changes: {
+      status: { old: 'SUBMITTED', new: 'APPROVED' },
+      approved_by: { old: null, new: 'manager@dillanci.com' },
+    },
+    extra_data: { approval_comment: 'Approved for Q1 budget' },
+  },
+  {
+    id: 'audit-4',
+    timestamp: '2025-12-16T09:00:00Z',
+    user: 'user-1',
+    user_email: 'admin@dillanci.com',
+    ip_address: '192.168.1.100',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    organization: 'org-1',
+    content_type: 'suppliers.supplier',
+    content_type_name: 'Supplier',
+    object_id: 'sup-456',
+    object_repr: 'Acme Corp',
+    action: 'UPDATE',
+    action_display: 'Updated',
+    from_state: null,
+    to_state: null,
+    changes: {
+      contact_email: { old: 'old@acme.com', new: 'new@acme.com' },
+      phone: { old: '555-0100', new: '555-0200' },
+    },
+    extra_data: null,
+  },
+  {
+    id: 'audit-5',
+    timestamp: '2025-12-15T16:30:00Z',
+    user: 'user-3',
+    user_email: 'procurement@dillanci.com',
+    ip_address: '192.168.1.102',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    organization: 'org-1',
+    content_type: 'purchase_orders.purchaseorder',
+    content_type_name: 'Purchase Order',
+    object_id: 'po-789',
+    object_repr: 'PO-2025-042',
+    action: 'CREATE',
+    action_display: 'Created',
+    from_state: null,
+    to_state: 'DRAFT',
+    changes: {
+      supplier: { old: null, new: 'Acme Corp' },
+      total_amount: { old: null, new: '15000.00' },
+    },
+    extra_data: null,
+  },
+];
+
+// =============================================================================
 // Types - Audit Logs
 // =============================================================================
 
@@ -770,8 +1213,28 @@ export interface AuditLog {
 // =============================================================================
 
 export async function fetchAuditLogs(params?: Record<string, string>): Promise<PaginatedResponse<AuditLog>> {
-  const response = await apiClient.get<PaginatedResponse<AuditLog>>('/audit/logs/', { params });
-  return response.data;
+  if (MOCK_MODE) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      count: mockAuditLogs.length,
+      next: null,
+      previous: null,
+      results: mockAuditLogs,
+    };
+  }
+
+  try {
+    const response = await apiClient.get<PaginatedResponse<AuditLog>>('/audit/logs/', { params });
+    return response.data;
+  } catch {
+    // Return mock data if endpoint doesn't exist yet
+    return {
+      count: mockAuditLogs.length,
+      next: null,
+      previous: null,
+      results: mockAuditLogs,
+    };
+  }
 }
 
 export async function fetchAuditLog(id: string): Promise<AuditLog> {

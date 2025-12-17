@@ -181,14 +181,17 @@ export default function AuditLogsPage() {
     {
       accessorKey: 'user_email',
       header: 'User',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
-            {row.original.user_email[0].toUpperCase()}
+      cell: ({ row }) => {
+        const email = row.original.user_email || 'Unknown';
+        return (
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
+              {email[0]?.toUpperCase() || '?'}
+            </div>
+            <span className="text-sm">{email}</span>
           </div>
-          <span className="text-sm">{row.original.user_email}</span>
-        </div>
-      ),
+        );
+      },
     },
     {
       accessorKey: 'action',

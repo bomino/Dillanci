@@ -15,13 +15,17 @@ interface AuthActions {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearError: () => void;
+  /** Refresh user's permissions and roles from the backend */
+  refreshPermissions: () => Promise<void>;
+  /** Update user data locally (for optimistic updates) */
+  updateUser: (updates: Partial<User>) => void;
 }
 
 type AuthStore = AuthState & AuthActions;
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, _get) => ({
+    (set, get) => ({
       // Initial state
       user: null,
       isAuthenticated: false,
@@ -32,9 +36,11 @@ export const useAuthStore = create<AuthStore>()(
       login: async (credentials) => {
         set({ isLoading: true, error: null });
         try {
-          const user = await authApi.login(credentials);
+          await authApi.login(credentials);
+          // After login, fetch full user with permissions
+          const fullUser = await authApi.getCurrentUser();
           set({
-            user,
+            user: fullUser,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -79,7 +85,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             error: null,
           });
-        } catch (error) {
+        } catch {
           // Session invalid or expired - clear local state
           set({
             user: null,
@@ -88,6 +94,42 @@ export const useAuthStore = create<AuthStore>()(
             error: null, // Don't show error for auth check failures
           });
         }
+      },
+
+      // Refresh permissions (useful after role changes)
+      refreshPermissions: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        try {
+          const [permissions, roles] = await Promise.all([
+            authApi.fetchUserPermissions(user.id),
+            authApi.fetchUserRoles(user.id),
+          ]);
+
+          set({
+            user: {
+              ...user,
+              permissions,
+              roles,
+            },
+          });
+        } catch (error) {
+          console.error('Failed to refresh permissions:', error);
+        }
+      },
+
+      // Update user data locally
+      updateUser: (updates) => {
+        const { user } = get();
+        if (!user) return;
+
+        set({
+          user: {
+            ...user,
+            ...updates,
+          },
+        });
       },
 
       // Clear error
