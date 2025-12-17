@@ -36,6 +36,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RFQForm } from '@/components/rfqs';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 
 import {
   useRFQ,
@@ -575,6 +577,30 @@ export default function RFQDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection objectType="rfq" objectId={rfq.id} />
+        </CardContent>
+      </Card>
+
+      {/* Attachments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentsSection
+            objectType="rfq"
+            objectId={rfq.id}
+            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+          />
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

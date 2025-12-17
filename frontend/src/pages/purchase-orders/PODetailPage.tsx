@@ -42,6 +42,8 @@ import {
 } from '@/components/ui/dialog';
 
 import { POForm, POLineItemsTable } from '@/components/purchase-orders';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 import {
   usePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -577,6 +579,30 @@ export default function PODetailPage() {
           )}
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection objectType="purchase_order" objectId={purchaseOrder.id} />
+        </CardContent>
+      </Card>
+
+      {/* Attachments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentsSection
+            objectType="purchase_order"
+            objectId={purchaseOrder.id}
+            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+          />
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

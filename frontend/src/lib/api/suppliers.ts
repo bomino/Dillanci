@@ -70,6 +70,16 @@ export async function suspendSupplier(id: string, reason?: string): Promise<Supp
   return response.data;
 }
 
+export async function rejectSupplier(id: string, reason?: string): Promise<Supplier> {
+  const response = await apiClient.post(`/suppliers/${id}/reject/`, { reason });
+  return response.data;
+}
+
+export async function reactivateSupplier(id: string): Promise<Supplier> {
+  const response = await apiClient.post(`/suppliers/${id}/reactivate/`);
+  return response.data;
+}
+
 // React Query Hooks
 
 // List suppliers with filters and pagination
@@ -152,6 +162,33 @@ export function useSuspendSupplier() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       queryClient.invalidateQueries({ queryKey: ['suppliers', variables.id] });
+    },
+  });
+}
+
+// Reject supplier mutation
+export function useRejectSupplier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      rejectSupplier(id, reason),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.id] });
+    },
+  });
+}
+
+// Reactivate supplier mutation
+export function useReactivateSupplier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: reactivateSupplier,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', id] });
     },
   });
 }

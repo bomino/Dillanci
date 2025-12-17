@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import {
   Plus,
   Search,
@@ -26,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExportButton } from '@/components/ui/export-button';
 import {
   Table,
   TableBody,
@@ -441,6 +443,20 @@ export default function RFPsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportButton
+              data={rfps}
+              filename={`rfps-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'RFP #' },
+                { key: 'title', header: 'Title' },
+                { key: 'category', header: 'Category' },
+                { key: 'status', header: 'Status' },
+                { key: 'estimated_value', header: 'Est. Value' },
+                { key: 'publish_date', header: 'Published', formatter: (v) => v ? format(new Date(String(v)), 'MMM d, yyyy') : '-' },
+                { key: 'closing_date', header: 'Closing', formatter: (v) => v ? format(new Date(String(v)), 'MMM d, yyyy') : '-' },
+                { key: 'proposals_count', header: 'Proposals' },
+              ]}
+            />
           </div>
 
           {/* Table */}

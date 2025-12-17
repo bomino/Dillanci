@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -15,6 +15,11 @@ import {
   DollarSign,
   Users,
   ClipboardCheck,
+  BarChart3,
+  MessageCircleQuestion,
+  Repeat,
+  Paperclip,
+  MessageSquare,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -43,8 +48,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
-import { RFPForm } from '@/components/rfps';
+import {
+  RFPForm,
+  EvaluationTeamPanel,
+  ScoringMatrix,
+  QASection,
+  BAFOPanel,
+  ProposalsList,
+  type EvaluationTeamMember,
+  type EvaluatorRole,
+  type ScoringCriterion,
+  type ProposalForScoring,
+  type Score,
+  type RFPQuestion,
+  type BAFORound,
+  type Proposal,
+} from '@/components/rfps';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 
 import {
   useRFP,
@@ -67,8 +91,76 @@ export default function RFPDetailPage() {
   const location = useLocation();
   const isEditMode = location.pathname.endsWith('/edit');
 
+  const [activeTab, setActiveTab] = useState('overview');
   const [awardDialogOpen, setAwardDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState('');
+
+  // Mock state for components (would come from API in real app)
+  const [evaluationTeam, setEvaluationTeam] = useState<EvaluationTeamMember[]>([
+    {
+      id: '1',
+      user_id: 'u1',
+      user_name: 'John Smith',
+      user_email: 'john.smith@company.com',
+      role: 'LEAD',
+      has_submitted_scores: true,
+      scores_submitted_at: '2024-12-15T10:00:00Z',
+    },
+    {
+      id: '2',
+      user_id: 'u2',
+      user_name: 'Sarah Johnson',
+      user_email: 'sarah.johnson@company.com',
+      role: 'TECHNICAL',
+      has_submitted_scores: true,
+      scores_submitted_at: '2024-12-14T15:30:00Z',
+    },
+    {
+      id: '3',
+      user_id: 'u3',
+      user_name: 'Michael Brown',
+      user_email: 'michael.brown@company.com',
+      role: 'FINANCIAL',
+      has_submitted_scores: false,
+      scores_submitted_at: null,
+    },
+  ]);
+
+  const [scores, setScores] = useState<Score[]>([]);
+  const [questions, setQuestions] = useState<RFPQuestion[]>([
+    {
+      id: 'q1',
+      rfp_id: id || '',
+      supplier_id: 's1',
+      supplier_name: 'ABC Tech Solutions',
+      question: 'Can you clarify the expected integration timeline with existing systems?',
+      answer: 'The integration should be completed within 30 days of contract signing. We expect phased rollout starting with pilot department.',
+      answered_by: 'John Smith',
+      answered_at: '2024-12-10T14:00:00Z',
+      is_published: true,
+      published_at: '2024-12-10T16:00:00Z',
+      requires_amendment: false,
+      amendment_note: null,
+      created_at: '2024-12-09T10:00:00Z',
+    },
+    {
+      id: 'q2',
+      rfp_id: id || '',
+      supplier_id: 's2',
+      supplier_name: 'Global Systems Inc',
+      question: 'What are the specific security certifications required for the solution?',
+      answer: null,
+      answered_by: null,
+      answered_at: null,
+      is_published: false,
+      published_at: null,
+      requires_amendment: false,
+      amendment_note: null,
+      created_at: '2024-12-11T09:00:00Z',
+    },
+  ]);
+
+  const [bafoRound, setBAFORound] = useState<BAFORound | null>(null);
 
   const { data: rfp, isLoading, error } = useRFP(id);
   const { data: proposals = [] } = useVendorProposals(id);
@@ -80,6 +172,68 @@ export default function RFPDetailPage() {
   const shortlistMutation = useShortlistRFP();
   const awardMutation = useAwardRFP();
   const cancelMutation = useCancelRFP();
+
+  // Mock available users for team management
+  const availableUsers = [
+    { id: 'u4', name: 'Emily Davis', email: 'emily.davis@company.com' },
+    { id: 'u5', name: 'Robert Wilson', email: 'robert.wilson@company.com' },
+    { id: 'u6', name: 'Jennifer Lee', email: 'jennifer.lee@company.com' },
+  ];
+
+  // Convert evaluation criteria for scoring matrix
+  const scoringCriteria: ScoringCriterion[] = useMemo(() => {
+    if (!rfp?.evaluation_criteria) return [];
+    return rfp.evaluation_criteria.map(ec => ({
+      id: ec.id,
+      name: ec.name,
+      description: ec.description || '',
+      weight: ec.weight,
+      max_score: ec.max_score,
+    }));
+  }, [rfp?.evaluation_criteria]);
+
+  // Convert proposals for scoring matrix
+  const proposalsForScoring: ProposalForScoring[] = useMemo(() => {
+    return proposals.map(p => ({
+      id: p.id,
+      supplier_id: p.supplier_id || '',
+      supplier_name: p.supplier_name,
+      proposed_amount: p.proposed_amount,
+      executive_summary: p.executive_summary,
+    }));
+  }, [proposals]);
+
+  // Convert proposals for proposals list
+  const proposalsForList: Proposal[] = useMemo(() => {
+    return proposals.map(p => ({
+      id: p.id,
+      rfp_id: id || '',
+      supplier_id: p.supplier_id || '',
+      supplier_name: p.supplier_name,
+      proposed_amount: p.proposed_amount,
+      executive_summary: p.executive_summary,
+      technical_score: p.technical_score,
+      financial_score: p.financial_score,
+      weighted_score: p.total_score,
+      status: (p.status === 'SELECTED' ? 'AWARDED' : p.status) as Proposal['status'],
+      submitted_at: p.submitted_date,
+      created_at: p.submitted_date || new Date().toISOString(),
+      documents_count: 3,
+    }));
+  }, [proposals, id]);
+
+  // Shortlisted proposals for BAFO
+  const shortlistedProposals = useMemo(() => {
+    return proposals
+      .filter(p => p.status === 'SHORTLISTED')
+      .map(p => ({
+        id: p.id,
+        supplier_id: p.supplier_id || '',
+        supplier_name: p.supplier_name,
+        proposed_amount: p.proposed_amount,
+        weighted_score: p.total_score || 0,
+      }));
+  }, [proposals]);
 
   if (isLoading) {
     return (
@@ -130,6 +284,132 @@ export default function RFPDetailPage() {
     await cancelMutation.mutateAsync(rfp.id);
   };
 
+  // Team management handlers
+  const handleAddTeamMember = async (userId: string, role: EvaluatorRole) => {
+    const user = availableUsers.find(u => u.id === userId);
+    if (!user) return;
+    const newMember: EvaluationTeamMember = {
+      id: `team-${Date.now()}`,
+      user_id: userId,
+      user_name: user.name,
+      user_email: user.email,
+      role,
+      has_submitted_scores: false,
+      scores_submitted_at: null,
+    };
+    setEvaluationTeam(prev => [...prev, newMember]);
+  };
+
+  const handleRemoveTeamMember = async (memberId: string) => {
+    setEvaluationTeam(prev => prev.filter(m => m.id !== memberId));
+  };
+
+  const handleUpdateTeamRole = async (memberId: string, role: EvaluatorRole) => {
+    setEvaluationTeam(prev =>
+      prev.map(m => m.id === memberId ? { ...m, role } : m)
+    );
+  };
+
+  // Score handlers
+  const handleScoreChange = (proposalId: string, criterionId: string, score: number, comments: string) => {
+    setScores(prev => {
+      const filtered = prev.filter(s => !(s.proposal_id === proposalId && s.criterion_id === criterionId));
+      return [...filtered, { proposal_id: proposalId, criterion_id: criterionId, score, comments }];
+    });
+  };
+
+  const handleSaveScores = async () => {
+    // Would save to API
+    console.log('Saving scores:', scores);
+  };
+
+  // Q&A handlers
+  const handleAnswerQuestion = async (questionId: string, answer: string, requiresAmendment: boolean, amendmentNote?: string) => {
+    setQuestions(prev =>
+      prev.map(q => q.id === questionId ? {
+        ...q,
+        answer,
+        answered_by: 'Current User',
+        answered_at: new Date().toISOString(),
+        requires_amendment: requiresAmendment,
+        amendment_note: amendmentNote || null,
+      } : q)
+    );
+  };
+
+  const handlePublishAnswer = async (questionId: string) => {
+    setQuestions(prev =>
+      prev.map(q => q.id === questionId ? {
+        ...q,
+        is_published: true,
+        published_at: new Date().toISOString(),
+      } : q)
+    );
+  };
+
+  const handleUnpublishAnswer = async (questionId: string) => {
+    setQuestions(prev =>
+      prev.map(q => q.id === questionId ? {
+        ...q,
+        is_published: false,
+        published_at: null,
+      } : q)
+    );
+  };
+
+  // BAFO handlers
+  const handleStartBAFO = async (deadline: string, instructions: string, invitedSupplierIds: string[]) => {
+    const invitations = shortlistedProposals
+      .filter(p => invitedSupplierIds.includes(p.supplier_id))
+      .map(p => ({
+        id: `inv-${p.id}`,
+        supplier_id: p.supplier_id,
+        supplier_name: p.supplier_name,
+        proposal_id: p.id,
+        original_amount: p.proposed_amount,
+        bafo_amount: null,
+        submitted_at: null,
+        notes: null,
+      }));
+
+    setBAFORound({
+      id: `bafo-${Date.now()}`,
+      rfp_id: id || '',
+      round_number: 1,
+      status: 'ACTIVE',
+      started_at: new Date().toISOString(),
+      deadline,
+      closed_at: null,
+      instructions,
+      invitations,
+    });
+  };
+
+  const handleCloseBAFO = async () => {
+    setBAFORound(prev => prev ? { ...prev, status: 'CLOSED', closed_at: new Date().toISOString() } : null);
+  };
+
+  const handleAwardFromBAFO = async (proposalId: string) => {
+    setBAFORound(prev => prev ? { ...prev, status: 'AWARDED' } : null);
+  };
+
+  // Proposal handlers
+  const handleViewProposal = (proposalId: string) => {
+    console.log('View proposal:', proposalId);
+  };
+
+  const handleShortlistProposal = async (proposalId: string) => {
+    console.log('Shortlist proposal:', proposalId);
+  };
+
+  const handleRejectProposal = async (proposalId: string) => {
+    console.log('Reject proposal:', proposalId);
+  };
+
+  const handleDownloadDocuments = (proposalId: string) => {
+    console.log('Download documents:', proposalId);
+  };
+
   const formatCurrency = (value: string | null, currency: string) => {
     if (!value) return '-';
     return new Intl.NumberFormat('en-US', {
@@ -172,6 +452,10 @@ export default function RFPDetailPage() {
   };
 
   const deadlineStatus = getDeadlineStatus();
+
+  // Determine which tabs to show based on status
+  const showEvaluationTabs = ['UNDER_EVALUATION', 'SHORTLISTED', 'AWARDED', 'CLOSED'].includes(rfp.status);
+  const showProposals = rfp.status !== 'DRAFT';
 
   // Edit mode
   if (isEditMode && rfp.status === 'DRAFT') {
@@ -336,251 +620,353 @@ export default function RFPDetailPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-neutral-700 whitespace-pre-wrap">{rfp.description}</p>
-            </CardContent>
-          </Card>
+      {/* Main Content with Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 h-auto gap-1 p-1">
+          <TabsTrigger value="overview" className="gap-2">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          {showProposals && (
+            <TabsTrigger value="proposals" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Proposals</span>
+              {proposals.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                  {proposals.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
+          {showEvaluationTabs && (
+            <>
+              <TabsTrigger value="evaluation" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Scoring</span>
+              </TabsTrigger>
+              <TabsTrigger value="team" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Team</span>
+              </TabsTrigger>
+            </>
+          )}
+          <TabsTrigger value="qa" className="gap-2">
+            <MessageCircleQuestion className="h-4 w-4" />
+            <span className="hidden sm:inline">Q&A</span>
+            {questions.filter(q => !q.answer).length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-amber-100 text-amber-700">
+                {questions.filter(q => !q.answer).length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          {rfp.status === 'SHORTLISTED' && (
+            <TabsTrigger value="bafo" className="gap-2">
+              <Repeat className="h-4 w-4" />
+              <span className="hidden sm:inline">BAFO</span>
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="activity" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Activity</span>
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Requirements */}
-          {rfp.requirements && rfp.requirements.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardCheck className="h-5 w-5" />
-                  Requirements ({rfp.requirements.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {rfp.requirements.map((req, index) => (
-                    <div key={req.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-neutral-500">
-                            #{index + 1}
-                          </span>
-                          <span className="px-2 py-0.5 text-xs font-medium bg-neutral-100 rounded">
-                            {req.category}
-                          </span>
-                          {req.is_mandatory && (
-                            <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded">
-                              Mandatory
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Description */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Description</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-neutral-700 whitespace-pre-wrap">{rfp.description}</p>
+                </CardContent>
+              </Card>
+
+              {/* Requirements */}
+              {rfp.requirements && rfp.requirements.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardCheck className="h-5 w-5" />
+                      Requirements ({rfp.requirements.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {rfp.requirements.map((req, index) => (
+                        <div key={req.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-neutral-500">
+                                #{index + 1}
+                              </span>
+                              <span className="px-2 py-0.5 text-xs font-medium bg-neutral-100 rounded">
+                                {req.category}
+                              </span>
+                              {req.is_mandatory && (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded">
+                                  Mandatory
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm text-neutral-500">
+                              Weight: {req.weight}%
                             </span>
-                          )}
-                        </div>
-                        <span className="text-sm text-neutral-500">
-                          Weight: {req.weight}%
-                        </span>
-                      </div>
-                      <p className="text-neutral-700">{req.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Evaluation Criteria */}
-          {rfp.evaluation_criteria && rfp.evaluation_criteria.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Evaluation Criteria</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Criteria</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Weight</TableHead>
-                      <TableHead className="text-right">Max Score</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rfp.evaluation_criteria.map((ec) => (
-                      <TableRow key={ec.id}>
-                        <TableCell className="font-medium">{ec.name}</TableCell>
-                        <TableCell className="text-neutral-600">{ec.description}</TableCell>
-                        <TableCell className="text-right">{ec.weight}%</TableCell>
-                        <TableCell className="text-right">{ec.max_score}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Vendor Proposals */}
-          {proposals.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Vendor Proposals ({proposals.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {proposals.map((proposal) => (
-                    <div key={proposal.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="font-medium text-neutral-900">{proposal.supplier_name}</p>
-                          <p className="text-sm text-neutral-500">
-                            Submitted: {formatDate(proposal.submitted_date)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-neutral-900">
-                            {formatCurrency(proposal.proposed_amount, rfp.currency)}
-                          </p>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            proposal.status === 'SELECTED' ? 'bg-green-100 text-green-700' :
-                            proposal.status === 'SHORTLISTED' ? 'bg-blue-100 text-blue-700' :
-                            proposal.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                            'bg-neutral-100 text-neutral-700'
-                          }`}>
-                            {proposal.status.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {proposal.executive_summary && (
-                        <p className="text-sm text-neutral-600 mb-3">{proposal.executive_summary}</p>
-                      )}
-
-                      {proposal.total_score !== null && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-neutral-500">Total Score</span>
-                            <span className="font-medium">{proposal.total_score}/100</span>
                           </div>
-                          <Progress value={proposal.total_score} className="h-2" />
-                          <div className="flex items-center justify-between text-xs text-neutral-500">
-                            <span>Technical: {proposal.technical_score}</span>
-                            <span>Financial: {proposal.financial_score}</span>
-                          </div>
+                          <p className="text-neutral-700">{req.description}</p>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                  </CardContent>
+                </Card>
+              )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Details */}
+              {/* Evaluation Criteria */}
+              {rfp.evaluation_criteria && rfp.evaluation_criteria.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Evaluation Criteria</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Criteria</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Weight</TableHead>
+                          <TableHead className="text-right">Max Score</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rfp.evaluation_criteria.map((ec) => (
+                          <TableRow key={ec.id}>
+                            <TableCell className="font-medium">{ec.name}</TableCell>
+                            <TableCell className="text-neutral-600">{ec.description}</TableCell>
+                            <TableCell className="text-right">{ec.weight}%</TableCell>
+                            <TableCell className="text-right">{ec.max_score}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Attachments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Paperclip className="h-5 w-5" />
+                    Attachments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AttachmentsSection
+                    objectType="rfp"
+                    objectId={rfp.id}
+                    acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg']}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Category</p>
+                      <p className="font-medium">{categoryConfig?.label || rfp.category}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Budget Range</p>
+                      <p className="font-medium">
+                        {rfp.budget_min || rfp.budget_max
+                          ? `${formatCurrency(rfp.budget_min, rfp.currency)} - ${formatCurrency(rfp.budget_max, rfp.currency)}`
+                          : 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Published</p>
+                      <p className="font-medium">{formatDate(rfp.publish_date)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Submission Deadline</p>
+                      <p className="font-medium">{formatDate(rfp.submission_deadline)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Evaluation Deadline</p>
+                      <p className="font-medium">{formatDate(rfp.evaluation_deadline)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-neutral-400" />
+                    <div>
+                      <p className="text-sm text-neutral-500">Created By</p>
+                      <p className="font-medium">{rfp.created_by_name || 'Unknown'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Timeline */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${rfp.created_at ? 'bg-green-500' : 'bg-neutral-300'}`} />
+                      <div>
+                        <p className="text-sm font-medium">Created</p>
+                        <p className="text-xs text-neutral-500">{formatDate(rfp.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${rfp.publish_date ? 'bg-green-500' : 'bg-neutral-300'}`} />
+                      <div>
+                        <p className="text-sm font-medium">Published</p>
+                        <p className="text-xs text-neutral-500">{formatDate(rfp.publish_date)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${rfp.submission_deadline && new Date(rfp.submission_deadline) < new Date() ? 'bg-green-500' : 'bg-neutral-300'}`} />
+                      <div>
+                        <p className="text-sm font-medium">Submissions Closed</p>
+                        <p className="text-xs text-neutral-500">{formatDate(rfp.submission_deadline)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${rfp.awarded_date ? 'bg-green-500' : 'bg-neutral-300'}`} />
+                      <div>
+                        <p className="text-sm font-medium">Awarded</p>
+                        <p className="text-xs text-neutral-500">{formatDate(rfp.awarded_date)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Proposals Tab */}
+        {showProposals && (
+          <TabsContent value="proposals">
+            <ProposalsList
+              proposals={proposalsForList}
+              onViewProposal={handleViewProposal}
+              onShortlistProposal={handleShortlistProposal}
+              onRejectProposal={handleRejectProposal}
+              onDownloadDocuments={handleDownloadDocuments}
+              isOwner={true}
+            />
+          </TabsContent>
+        )}
+
+        {/* Evaluation/Scoring Tab */}
+        {showEvaluationTabs && (
+          <TabsContent value="evaluation">
+            <ScoringMatrix
+              criteria={scoringCriteria}
+              proposals={proposalsForScoring}
+              scores={scores}
+              onScoreChange={handleScoreChange}
+              onSaveScores={handleSaveScores}
+              isEditable={rfp.status === 'UNDER_EVALUATION'}
+            />
+          </TabsContent>
+        )}
+
+        {/* Team Tab */}
+        {showEvaluationTabs && (
+          <TabsContent value="team">
+            <EvaluationTeamPanel
+              rfpId={rfp.id}
+              team={evaluationTeam}
+              availableUsers={availableUsers}
+              onAddMember={handleAddTeamMember}
+              onRemoveMember={handleRemoveTeamMember}
+              onUpdateRole={handleUpdateTeamRole}
+              isEditable={rfp.status !== 'AWARDED'}
+            />
+          </TabsContent>
+        )}
+
+        {/* Q&A Tab */}
+        <TabsContent value="qa">
+          <QASection
+            rfpId={rfp.id}
+            questions={questions}
+            onAnswerQuestion={handleAnswerQuestion}
+            onPublishAnswer={handlePublishAnswer}
+            onUnpublishAnswer={handleUnpublishAnswer}
+            isOwner={true}
+          />
+        </TabsContent>
+
+        {/* BAFO Tab */}
+        {rfp.status === 'SHORTLISTED' && (
+          <TabsContent value="bafo">
+            <BAFOPanel
+              rfpId={rfp.id}
+              currentRound={bafoRound}
+              previousRounds={[]}
+              shortlistedProposals={shortlistedProposals}
+              onStartBAFO={handleStartBAFO}
+              onCloseBAFO={handleCloseBAFO}
+              onAwardFromBAFO={handleAwardFromBAFO}
+              isOwner={true}
+            />
+          </TabsContent>
+        )}
+
+        {/* Activity Tab */}
+        <TabsContent value="activity" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Category</p>
-                  <p className="font-medium">{categoryConfig?.label || rfp.category}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <DollarSign className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Budget Range</p>
-                  <p className="font-medium">
-                    {rfp.budget_min || rfp.budget_max
-                      ? `${formatCurrency(rfp.budget_min, rfp.currency)} - ${formatCurrency(rfp.budget_max, rfp.currency)}`
-                      : 'Not specified'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Published</p>
-                  <p className="font-medium">{formatDate(rfp.publish_date)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Submission Deadline</p>
-                  <p className="font-medium">{formatDate(rfp.submission_deadline)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Evaluation Deadline</p>
-                  <p className="font-medium">{formatDate(rfp.evaluation_deadline)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm text-neutral-500">Created By</p>
-                  <p className="font-medium">{rfp.created_by_name || 'Unknown'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Comments & Activity
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${rfp.created_at ? 'bg-green-500' : 'bg-neutral-300'}`} />
-                  <div>
-                    <p className="text-sm font-medium">Created</p>
-                    <p className="text-xs text-neutral-500">{formatDate(rfp.created_at)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${rfp.publish_date ? 'bg-green-500' : 'bg-neutral-300'}`} />
-                  <div>
-                    <p className="text-sm font-medium">Published</p>
-                    <p className="text-xs text-neutral-500">{formatDate(rfp.publish_date)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${rfp.submission_deadline && new Date(rfp.submission_deadline) < new Date() ? 'bg-green-500' : 'bg-neutral-300'}`} />
-                  <div>
-                    <p className="text-sm font-medium">Submissions Closed</p>
-                    <p className="text-xs text-neutral-500">{formatDate(rfp.submission_deadline)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${rfp.awarded_date ? 'bg-green-500' : 'bg-neutral-300'}`} />
-                  <div>
-                    <p className="text-sm font-medium">Awarded</p>
-                    <p className="text-xs text-neutral-500">{formatDate(rfp.awarded_date)}</p>
-                  </div>
-                </div>
-              </div>
+              <CommentsSection
+                objectType="rfp"
+                objectId={rfp.id}
+              />
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Award Dialog */}
       <Dialog open={awardDialogOpen} onOpenChange={setAwardDialogOpen}>

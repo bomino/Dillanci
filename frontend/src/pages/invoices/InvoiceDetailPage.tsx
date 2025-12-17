@@ -43,6 +43,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 
 import { InvoiceForm, ThreeWayMatch } from '@/components/invoices';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 import {
   useInvoice,
   useUpdateInvoice,
@@ -697,6 +699,30 @@ export default function InvoiceDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection objectType="invoice" objectId={invoice.id} />
+        </CardContent>
+      </Card>
+
+      {/* Attachments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentsSection
+            objectType="invoice"
+            objectId={invoice.id}
+            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+          />
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

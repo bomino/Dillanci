@@ -34,6 +34,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 
 import { ContractForm } from '@/components/contracts';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 import {
   useContract,
   useUpdateContract,
@@ -552,6 +554,30 @@ export default function ContractDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection objectType="contract" objectId={contract.id} />
+        </CardContent>
+      </Card>
+
+      {/* Attachments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentsSection
+            objectType="contract"
+            objectId={contract.id}
+            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+          />
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

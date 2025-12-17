@@ -11,6 +11,13 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from rest_framework.routers import DefaultRouter
+
+from apps.core.views import NotificationViewSet
+
+# Create router for notifications (available to all authenticated users)
+notifications_router = DefaultRouter()
+notifications_router.register(r'notifications', NotificationViewSet, basename='notification')
 
 # Configure Django Admin site branding
 admin.site.site_header = 'Dillanci Administration'
@@ -38,6 +45,7 @@ urlpatterns = [
     # API v1
     path('api/v1/', include([
         path('', include('apps.users.urls')),
+        path('', include(notifications_router.urls)),  # Notifications at /api/v1/notifications/
         path('organizations/', include('apps.organizations.urls')),
         path('suppliers/', include('apps.suppliers.urls')),
         path('catalog/', include('apps.catalog.urls')),

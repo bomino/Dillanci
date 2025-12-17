@@ -7,12 +7,15 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.core.models import APIKey, ApprovalThreshold, SystemPreference
+from apps.core.models import APIKey, ApprovalThreshold, Notification, SystemPreference
 from apps.core.serializers import (
     APIKeyCreateSerializer,
     APIKeyResponseSerializer,
     APIKeySerializer,
     ApprovalThresholdSerializer,
+    NotificationCreateSerializer,
+    NotificationSerializer,
+    NotificationSummarySerializer,
     SystemPreferenceBulkUpdateSerializer,
     SystemPreferenceSerializer,
 )
@@ -334,3 +337,121 @@ class APIKeyViewSet(viewsets.ModelViewSet):
 # Import needed for Q objects
 from django.db import models
 from rest_framework import serializers
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user notifications.
+
+    Endpoints:
+    - GET /notifications/ - List user's notifications
+    - GET /notifications/summary/ - Get unread/urgent counts
+    - POST /notifications/{id}/mark-read/ - Mark single notification as read
+    - POST /notifications/mark-all-read/ - Mark all notifications as read
+    - DELETE /notifications/{id}/ - Delete a notification
+    """
+
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter to only show current user's notifications."""
+        queryset = Notification.objects.filter(user=self.request.user)
+
+        # Filter by status
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter.upper())
+
+        # Filter by type
+        type_filter = self.request.query_params.get('type')
+        if type_filter:
+            queryset = queryset.filter(type=type_filter.upper())
+
+        # Filter by priority
+        priority_filter = self.request.query_params.get('priority')
+        if priority_filter:
+            queryset = queryset.filter(priority=priority_filter.upper())
+
+        # Exclude archived by default
+        include_archived = self.request.query_params.get('include_archived', 'false')
+        if include_archived.lower() != 'true':
+            queryset = queryset.exclude(status='ARCHIVED')
+
+        return queryset.order_by('-created_at')
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return NotificationCreateSerializer
+        return NotificationSerializer
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """Get notification counts for the current user."""
+        user_notifications = Notification.objects.filter(user=request.user)
+
+        total = user_notifications.exclude(status='ARCHIVED').count()
+        unread = user_notifications.filter(status='UNREAD').count()
+        urgent = user_notifications.filter(
+            status='UNREAD',
+            priority='URGENT'
+        ).count()
+
+        serializer = NotificationSummarySerializer({
+            'total': total,
+            'unread': unread,
+            'urgent': urgent,
+        })
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='mark-read')
+    def mark_read(self, request, pk=None):
+        """Mark a single notification as read."""
+        notification = self.get_object()
+        notification.mark_as_read()
+        return Response(NotificationSerializer(notification).data)
+
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request):
+        """Mark all unread notifications as read for the current user."""
+        from django.utils import timezone
+
+        updated = Notification.objects.filter(
+            user=request.user,
+            status='UNREAD'
+        ).update(
+            status='READ',
+            read_at=timezone.now()
+        )
+
+        return Response({
+            'message': f'Marked {updated} notifications as read.',
+            'updated_count': updated,
+        })
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Archive a notification."""
+        notification = self.get_object()
+        notification.archive()
+        return Response(NotificationSerializer(notification).data)
+
+    @action(detail=False, methods=['post'], url_path='archive-all-read')
+    def archive_all_read(self, request):
+        """Archive all read notifications."""
+        updated = Notification.objects.filter(
+            user=request.user,
+            status='READ'
+        ).update(status='ARCHIVED')
+
+        return Response({
+            'message': f'Archived {updated} notifications.',
+            'updated_count': updated,
+        })
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a notification (soft delete by archiving)."""
+        instance = self.get_object()
+        instance.archive()
+        return Response(status=status.HTTP_204_NO_CONTENT)

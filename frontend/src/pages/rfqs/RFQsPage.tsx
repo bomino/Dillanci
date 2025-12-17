@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 import {
@@ -34,6 +35,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ExportButton } from '@/components/ui/export-button';
 
 import {
   useRFQs,
@@ -478,6 +480,19 @@ export default function RFQsPage() {
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            <ExportButton
+              data={data?.results || []}
+              filename={`rfqs-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'RFQ #' },
+                { key: 'title', header: 'Title' },
+                { key: 'status', header: 'Status' },
+                { key: 'total_amount', header: 'Est. Value', formatter: (v) => v ? formatCurrency(parseFloat(String(v))) : '-' },
+                { key: 'open_date', header: 'Opened', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'close_date', header: 'Close Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'created_at', header: 'Created', formatter: (v) => v ? formatDate(String(v)) : '-' },
+              ]}
+            />
           </div>
 
           {/* Error State */}

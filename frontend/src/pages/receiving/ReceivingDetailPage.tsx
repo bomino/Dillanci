@@ -14,10 +14,13 @@ import {
   User,
   Printer,
   ShoppingCart,
+  ClipboardCheck,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CommentsSection } from '@/components/ui/comments-section';
+import { AttachmentsSection } from '@/components/ui/attachments-section';
 import {
   Table,
   TableBody,
@@ -37,7 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import { ReceivingForm } from '@/components/receiving';
+import { ReceivingForm, InspectionDialog, type InspectionFormData } from '@/components/receiving';
 import {
   useGoodsReceipt,
   useUpdateGoodsReceipt,
@@ -65,6 +68,8 @@ export default function ReceivingDetailPage() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
+  const [isInspectionSubmitting, setIsInspectionSubmitting] = useState(false);
 
   const { data: goodsReceipt, isLoading, error } = useGoodsReceipt(id!);
   const updateMutation = useUpdateGoodsReceipt();
@@ -111,6 +116,25 @@ export default function ReceivingDetailPage() {
     }
   };
 
+  const handleInspectionSubmit = async (data: InspectionFormData) => {
+    setIsInspectionSubmitting(true);
+    try {
+      // In a real implementation, this would call an API to save inspection data
+      // For now, we'll log it and show a success message
+      console.log('Inspection data:', data);
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Close dialog - in production this would update the GR with inspection info
+      setInspectionDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save inspection:', error);
+    } finally {
+      setIsInspectionSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -137,6 +161,7 @@ export default function ReceivingDetailPage() {
   const canEdit = goodsReceipt.status === 'DRAFT';
   const canConfirm = goodsReceipt.status === 'DRAFT';
   const canCancel = goodsReceipt.status !== 'CANCELLED';
+  const canInspect = goodsReceipt.status === 'DRAFT' && goodsReceipt.lines && goodsReceipt.lines.length > 0;
 
   // Edit Mode
   if (isEditMode && canEdit) {
@@ -233,6 +258,18 @@ export default function ReceivingDetailPage() {
             <Printer className="h-4 w-4" />
             Print
           </Button>
+
+          {canInspect && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setInspectionDialogOpen(true)}
+              className="gap-2 text-cyan-600 hover:text-cyan-700 border-cyan-200 hover:border-cyan-300"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Inspect
+            </Button>
+          )}
 
           {canEdit && (
             <>
@@ -423,6 +460,30 @@ export default function ReceivingDetailPage() {
         </div>
       </div>
 
+      {/* Comments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CommentsSection objectType="goods_receipt" objectId={goodsReceipt.id} />
+        </CardContent>
+      </Card>
+
+      {/* Attachments Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentsSection
+            objectType="goods_receipt"
+            objectId={goodsReceipt.id}
+            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+          />
+        </CardContent>
+      </Card>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -466,6 +527,18 @@ export default function ReceivingDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Quality Inspection Dialog */}
+      {goodsReceipt.lines && (
+        <InspectionDialog
+          open={inspectionDialogOpen}
+          onOpenChange={setInspectionDialogOpen}
+          lines={goodsReceipt.lines}
+          grNumber={goodsReceipt.number}
+          onSubmit={handleInspectionSubmit}
+          isSubmitting={isInspectionSubmitting}
+        />
+      )}
     </motion.div>
   );
 }

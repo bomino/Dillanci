@@ -105,6 +105,9 @@ DATABASES = {
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
+# Redirect to admin login after logout
+LOGOUT_REDIRECT_URL = '/admin/login/'
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

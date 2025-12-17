@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { format as dateFnsFormat } from 'date-fns';
 import {
   Plus,
   Search,
@@ -26,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExportButton } from '@/components/ui/export-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -480,6 +482,20 @@ export default function ContractsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportButton
+              data={contracts}
+              filename={`contracts-${dateFnsFormat(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'Contract #' },
+                { key: 'title', header: 'Title' },
+                { key: 'supplier_name', header: 'Supplier' },
+                { key: 'contract_type', header: 'Type' },
+                { key: 'status', header: 'Status' },
+                { key: 'total_value', header: 'Value', formatter: (v) => formatCurrency(v || 0) },
+                { key: 'start_date', header: 'Start Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'end_date', header: 'End Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+              ]}
+            />
           </div>
         </CardContent>
       </Card>

@@ -4,7 +4,7 @@ Core serializers for admin configuration models.
 
 from rest_framework import serializers
 
-from apps.core.models import APIKey, ApprovalThreshold, SystemPreference
+from apps.core.models import APIKey, ApprovalThreshold, Notification, SystemPreference
 
 
 class ApprovalThresholdSerializer(serializers.ModelSerializer):
@@ -149,3 +149,56 @@ class APIKeyResponseSerializer(serializers.Serializer):
 
     api_key = APIKeySerializer()
     key = serializers.CharField(help_text='The full API key. This is only shown once.')
+
+
+# =============================================================================
+# Notification Serializers
+# =============================================================================
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model."""
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id',
+            'type',
+            'title',
+            'message',
+            'status',
+            'priority',
+            'related_object_type',
+            'related_object_id',
+            'link',
+            'read_at',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'type', 'title', 'message', 'priority',
+                           'related_object_type', 'related_object_id', 'link',
+                           'read_at', 'created_at']
+
+
+class NotificationSummarySerializer(serializers.Serializer):
+    """Serializer for notification summary/counts."""
+
+    total = serializers.IntegerField()
+    unread = serializers.IntegerField()
+    urgent = serializers.IntegerField()
+
+
+class NotificationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating notifications (admin/system use)."""
+
+    class Meta:
+        model = Notification
+        fields = [
+            'user',
+            'type',
+            'title',
+            'message',
+            'priority',
+            'related_object_type',
+            'related_object_id',
+            'link',
+            'metadata',
+        ]

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 import {
@@ -33,6 +34,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ExportButton } from '@/components/ui/export-button';
 
 import {
   useRequisitions,
@@ -477,6 +479,21 @@ export default function RequisitionsPage() {
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            <ExportButton
+              data={data?.results || []}
+              filename={`requisitions-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'Requisition #' },
+                { key: 'title', header: 'Title' },
+                { key: 'requester_name', header: 'Requester' },
+                { key: 'department', header: 'Department' },
+                { key: 'status', header: 'Status' },
+                { key: 'priority', header: 'Priority' },
+                { key: 'total_amount', header: 'Amount', formatter: (v) => formatCurrency(parseFloat(String(v || 0)), 'USD') },
+                { key: 'required_date', header: 'Required By', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'created_at', header: 'Created', formatter: (v) => v ? formatDate(String(v)) : '-' },
+              ]}
+            />
           </div>
 
           {/* Error State */}

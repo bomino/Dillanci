@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import {
   Plus,
   Search,
@@ -23,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExportButton } from '@/components/ui/export-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -357,6 +359,19 @@ export default function ReceivingPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportButton
+              data={goodsReceipts}
+              filename={`goods-receipts-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'GR #' },
+                { key: 'po_number', header: 'PO #' },
+                { key: 'supplier_name', header: 'Supplier' },
+                { key: 'status', header: 'Status' },
+                { key: 'receipt_date', header: 'Receipt Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'received_by_name', header: 'Received By' },
+                { key: 'created_at', header: 'Created', formatter: (v) => v ? formatDate(String(v)) : '-' },
+              ]}
+            />
           </div>
         </CardContent>
       </Card>

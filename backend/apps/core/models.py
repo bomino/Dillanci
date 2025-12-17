@@ -336,3 +336,196 @@ class APIKey(BaseModel):
         """Hash an API key for storage."""
         import hashlib
         return hashlib.sha256(key.encode()).hexdigest()
+
+
+# =============================================================================
+# Notification Model - In-app notifications for users
+# =============================================================================
+
+class Notification(BaseModel):
+    """
+    In-app notification for users.
+
+    Supports various notification types for procurement events like:
+    - Approval requests
+    - Status changes
+    - Expiring contracts
+    - Budget alerts
+    """
+
+    NOTIFICATION_TYPES = [
+        ('APPROVAL_REQUIRED', 'Approval Required'),
+        ('APPROVAL_COMPLETED', 'Approval Completed'),
+        ('APPROVAL_REJECTED', 'Approval Rejected'),
+        ('DOCUMENT_SUBMITTED', 'Document Submitted'),
+        ('BID_RECEIVED', 'Bid Received'),
+        ('CONTRACT_EXPIRING', 'Contract Expiring'),
+        ('INVOICE_MATCHED', 'Invoice Matched'),
+        ('GOODS_RECEIVED', 'Goods Received'),
+        ('BUDGET_ALERT', 'Budget Alert'),
+        ('SYSTEM_ALERT', 'System Alert'),
+    ]
+
+    STATUS_CHOICES = [
+        ('UNREAD', 'Unread'),
+        ('READ', 'Read'),
+        ('ARCHIVED', 'Archived'),
+    ]
+
+    PRIORITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('NORMAL', 'Normal'),
+        ('HIGH', 'High'),
+        ('URGENT', 'Urgent'),
+    ]
+
+    # Target user
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        help_text='User who will receive this notification'
+    )
+
+    # Notification content
+    type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UNREAD')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='NORMAL')
+
+    # Related object (generic relation)
+    related_object_type = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text='Type of related object (e.g., requisition, purchase_order)'
+    )
+    related_object_id = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text='ID of the related object'
+    )
+    link = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='Frontend URL to navigate to'
+    )
+
+    # Timestamps
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    # Metadata
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Additional data for the notification'
+    )
+
+    class Meta:
+        db_table = 'notification'
+        verbose_name = 'Notification'
+        verbose_name_plural = 'Notifications'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['related_object_type', 'related_object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email}: {self.title}"
+
+    def mark_as_read(self):
+        """Mark the notification as read."""
+        if self.status == 'UNREAD':
+            self.status = 'READ'
+            self.read_at = timezone.now()
+            self.save(update_fields=['status', 'read_at', 'updated_at'])
+
+    def archive(self):
+        """Archive the notification."""
+        self.status = 'ARCHIVED'
+        self.save(update_fields=['status', 'updated_at'])
+
+    @classmethod
+    def create_notification(
+        cls,
+        user,
+        notification_type,
+        title,
+        message,
+        priority='NORMAL',
+        related_object_type=None,
+        related_object_id=None,
+        link=None,
+        metadata=None
+    ):
+        """
+        Helper method to create a notification.
+
+        Args:
+            user: The user to notify
+            notification_type: Type from NOTIFICATION_TYPES
+            title: Short title
+            message: Full message
+            priority: Priority level
+            related_object_type: Type of related object
+            related_object_id: UUID of related object
+            link: Frontend URL
+            metadata: Additional JSON data
+
+        Returns:
+            Notification instance
+        """
+        return cls.objects.create(
+            user=user,
+            type=notification_type,
+            title=title,
+            message=message,
+            priority=priority,
+            related_object_type=related_object_type,
+            related_object_id=related_object_id,
+            link=link,
+            metadata=metadata or {}
+        )
+
+    @classmethod
+    def notify_users(
+        cls,
+        users,
+        notification_type,
+        title,
+        message,
+        priority='NORMAL',
+        related_object_type=None,
+        related_object_id=None,
+        link=None,
+        metadata=None
+    ):
+        """
+        Create notifications for multiple users.
+
+        Args:
+            users: Queryset or list of users to notify
+            ... (same as create_notification)
+
+        Returns:
+            List of created Notification instances
+        """
+        notifications = []
+        for user in users:
+            notification = cls.create_notification(
+                user=user,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                priority=priority,
+                related_object_type=related_object_type,
+                related_object_id=related_object_id,
+                link=link,
+                metadata=metadata
+            )
+            notifications.append(notification)
+        return notifications

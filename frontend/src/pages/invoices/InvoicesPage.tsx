@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import {
   Plus,
   Search,
@@ -27,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExportButton } from '@/components/ui/export-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -479,6 +481,20 @@ export default function InvoicesPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportButton
+              data={invoices}
+              filename={`invoices-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'number', header: 'Invoice #' },
+                { key: 'supplier_name', header: 'Supplier' },
+                { key: 'po_number', header: 'PO #' },
+                { key: 'status', header: 'Status' },
+                { key: 'match_status', header: 'Match Status' },
+                { key: 'total_amount', header: 'Amount', formatter: (v) => formatCurrency(v || 0) },
+                { key: 'invoice_date', header: 'Invoice Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+                { key: 'due_date', header: 'Due Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
+              ]}
+            />
           </div>
         </CardContent>
       </Card>

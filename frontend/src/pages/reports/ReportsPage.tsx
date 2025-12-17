@@ -40,11 +40,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { reportsApi } from '@/lib/api/reports';
+import { subDays, startOfMonth, endOfMonth, subMonths, startOfQuarter, startOfYear } from 'date-fns';
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState('year');
   const [category, setCategory] = useState('all');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | null; to: Date | null }>({
+    from: null,
+    to: null,
+  });
 
   // Fetch KPIs
   const { data: kpis, isLoading: kpisLoading } = useQuery({
@@ -173,10 +179,22 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
+        <DateRangePicker
+          value={customDateRange}
+          onChange={setCustomDateRange}
+          presets={[
+            { label: 'Last 7 days', from: subDays(new Date(), 7), to: new Date() },
+            { label: 'This month', from: startOfMonth(new Date()), to: new Date() },
+            { label: 'Last month', from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) },
+            { label: 'This quarter', from: startOfQuarter(new Date()), to: new Date() },
+            { label: 'Year to date', from: startOfYear(new Date()), to: new Date() },
+          ]}
+        />
+
         <Select value={dateRange} onValueChange={setDateRange}>
           <SelectTrigger className="w-[180px]">
             <Calendar className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Date Range" />
+            <SelectValue placeholder="Quick Range" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="month">This Month</SelectItem>

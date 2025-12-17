@@ -320,6 +320,18 @@ The API follows REST conventions with the following base endpoints:
 | Invoices | `/api/v1/invoices/` | Invoice processing |
 | Contracts | `/api/v1/contracts/` | Contract management |
 | Reports | `/api/v1/reports/` | Reports & analytics |
+| Notifications | `/api/v1/notifications/` | In-app notifications |
+
+### Notifications API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/notifications/` | GET | List user's notifications |
+| `/api/v1/notifications/summary/` | GET | Get unread/urgent counts |
+| `/api/v1/notifications/{id}/mark-read/` | POST | Mark single notification as read |
+| `/api/v1/notifications/mark-all-read/` | POST | Mark all notifications as read |
+| `/api/v1/notifications/{id}/archive/` | POST | Archive a notification |
+| `/api/v1/notifications/archive-all-read/` | POST | Archive all read notifications |
 
 ## Testing
 

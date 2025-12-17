@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 import {
   Plus,
@@ -15,12 +16,16 @@ import {
   Phone,
   Globe,
   Filter,
+  Ban,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/badge';
+import { ExportButton } from '@/components/ui/export-button';
 import {
   DataTable,
   DataTableColumnHeader,
@@ -34,10 +39,28 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
-import { useSuppliers, useDeleteSupplier, supplierTypeConfig } from '@/lib/api/suppliers';
+import {
+  useSuppliers,
+  useDeleteSupplier,
+  useApproveSupplier,
+  useRejectSupplier,
+  useSuspendSupplier,
+  useReactivateSupplier,
+  supplierTypeConfig,
+} from '@/lib/api/suppliers';
 import { formatDate } from '@/lib/utils';
 import type { Supplier, SupplierStatus, SupplierFilters } from '@/types';
+
+type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate';
+
+interface ActionDialogState {
+  open: boolean;
+  type: ActionType | null;
+  supplier: Supplier | null;
+  reason: string;
+}
 
 export default function SuppliersPage() {
   const navigate = useNavigate();
@@ -49,9 +72,19 @@ export default function SuppliersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  const [actionDialog, setActionDialog] = useState<ActionDialogState>({
+    open: false,
+    type: null,
+    supplier: null,
+    reason: '',
+  });
 
   const { data, isLoading, isError } = useSuppliers(filters);
   const deleteMutation = useDeleteSupplier();
+  const approveMutation = useApproveSupplier();
+  const rejectMutation = useRejectSupplier();
+  const suspendMutation = useSuspendSupplier();
+  const reactivateMutation = useReactivateSupplier();
 
   // Handle search with debounce effect
   const handleSearch = (value: string) => {
@@ -91,6 +124,68 @@ export default function SuppliersPage() {
       setSupplierToDelete(null);
     }
   };
+
+  // Handle supplier action (approve, reject, suspend, reactivate)
+  const handleAction = (type: ActionType, supplier: Supplier) => {
+    setActionMenuOpen(null);
+    // Approve and reactivate don't need confirmation dialog
+    if (type === 'approve') {
+      approveMutation.mutate(supplier.id);
+      return;
+    }
+    if (type === 'reactivate') {
+      reactivateMutation.mutate(supplier.id);
+      return;
+    }
+    // Reject and suspend need a reason
+    setActionDialog({
+      open: true,
+      type,
+      supplier,
+      reason: '',
+    });
+  };
+
+  const handleActionConfirm = async () => {
+    if (!actionDialog.supplier || !actionDialog.type) return;
+
+    const { type, supplier, reason } = actionDialog;
+
+    if (type === 'reject') {
+      await rejectMutation.mutateAsync({ id: supplier.id, reason });
+    } else if (type === 'suspend') {
+      await suspendMutation.mutateAsync({ id: supplier.id, reason });
+    }
+
+    setActionDialog({ open: false, type: null, supplier: null, reason: '' });
+  };
+
+  const getActionDialogContent = () => {
+    const { type, supplier } = actionDialog;
+    if (!type || !supplier) return { title: '', description: '', buttonText: '', buttonClass: '' };
+
+    switch (type) {
+      case 'reject':
+        return {
+          title: 'Reject Supplier',
+          description: `Are you sure you want to reject "${supplier.name}"? Please provide a reason for rejection.`,
+          buttonText: 'Reject Supplier',
+          buttonClass: 'bg-red-600 hover:bg-red-700 text-white',
+        };
+      case 'suspend':
+        return {
+          title: 'Suspend Supplier',
+          description: `Are you sure you want to suspend "${supplier.name}"? Please provide a reason for suspension.`,
+          buttonText: 'Suspend Supplier',
+          buttonClass: 'bg-orange-600 hover:bg-orange-700 text-white',
+        };
+      default:
+        return { title: '', description: '', buttonText: '', buttonClass: '' };
+    }
+  };
+
+  const isActionPending = approveMutation.isPending || rejectMutation.isPending ||
+    suspendMutation.isPending || reactivateMutation.isPending;
 
   // Column definitions
   const columns: ColumnDef<Supplier>[] = [
@@ -258,29 +353,63 @@ export default function SuppliersPage() {
                   Edit Supplier
                 </button>
                 {row.original.status === 'PENDING_REVIEW' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // TODO: Implement approve action
-                      setActionMenuOpen(null);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Approve
-                  </button>
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction('approve', row.original);
+                      }}
+                      disabled={isActionPending}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      {approveMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      Approve
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction('reject', row.original);
+                      }}
+                      disabled={isActionPending}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </button>
+                  </>
                 )}
                 {row.original.status === 'APPROVED' && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // TODO: Implement suspend action
-                      setActionMenuOpen(null);
+                      handleAction('suspend', row.original);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-700 hover:bg-orange-50"
+                    disabled={isActionPending}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-700 hover:bg-orange-50 disabled:opacity-50"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <Ban className="h-4 w-4" />
                     Suspend
+                  </button>
+                )}
+                {row.original.status === 'SUSPENDED' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAction('reactivate', row.original);
+                    }}
+                    disabled={isActionPending}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                  >
+                    {reactivateMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Reactivate
                   </button>
                 )}
                 <div className="my-1 border-t border-neutral-100" />
@@ -420,6 +549,21 @@ export default function SuppliersPage() {
                 <SelectItem value="BLOCKED">Blocked</SelectItem>
               </SelectContent>
             </Select>
+            <ExportButton
+              data={data?.results || []}
+              filename={`suppliers-${format(new Date(), 'yyyy-MM-dd')}`}
+              columns={[
+                { key: 'code', header: 'Code' },
+                { key: 'name', header: 'Name' },
+                { key: 'supplier_type', header: 'Type', formatter: (v) => supplierTypeConfig[v as keyof typeof supplierTypeConfig]?.label || String(v) },
+                { key: 'status', header: 'Status' },
+                { key: 'contact_name', header: 'Contact' },
+                { key: 'contact_email', header: 'Email' },
+                { key: 'contact_phone', header: 'Phone' },
+                { key: 'city', header: 'City' },
+                { key: 'country', header: 'Country' },
+              ]}
+            />
           </div>
 
           {/* Error State */}
@@ -482,6 +626,55 @@ export default function SuppliersPage() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Dialog (Reject/Suspend with reason) */}
+      <Dialog
+        open={actionDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActionDialog({ open: false, type: null, supplier: null, reason: '' });
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getActionDialogContent().title}</DialogTitle>
+            <DialogDescription>
+              {getActionDialogContent().description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Enter reason (optional)"
+              value={actionDialog.reason}
+              onChange={(e) => setActionDialog(prev => ({ ...prev, reason: e.target.value }))}
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setActionDialog({ open: false, type: null, supplier: null, reason: '' })}
+            >
+              Cancel
+            </Button>
+            <Button
+              className={getActionDialogContent().buttonClass}
+              onClick={handleActionConfirm}
+              disabled={rejectMutation.isPending || suspendMutation.isPending}
+            >
+              {(rejectMutation.isPending || suspendMutation.isPending) ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                getActionDialogContent().buttonText
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
