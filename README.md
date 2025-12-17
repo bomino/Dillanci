@@ -113,10 +113,21 @@ Dillanci/
    docker-compose up -d
    ```
 
-4. **Access the application**
-   - Frontend: http://localhost:3001
-   - Backend API: http://localhost:8001/api/v1/
-   - API Docs: http://localhost:8001/api/v1/docs/
+4. **Run migrations and create admin user**
+   ```bash
+   docker-compose exec backend python manage.py migrate
+   docker-compose exec backend python manage.py createsuperuser
+   ```
+
+5. **Access the application**
+
+   | URL | Description |
+   |-----|-------------|
+   | http://localhost:3000 | Frontend Application |
+   | http://localhost:8000/admin/ | Django Admin Panel |
+   | http://localhost:8000/api/docs/ | Swagger API Documentation |
+   | http://localhost:8000/api/redoc/ | ReDoc API Documentation |
+   | http://localhost:8000/api/v1/ | API Base URL |
 
 ### Local Development
 
@@ -168,6 +179,33 @@ npm run dev
 | `VITE_MOCK_API` | Enable mock API mode | `false` |
 | `DEBUG` | Django debug mode | `True` |
 | `SECRET_KEY` | Django secret key | - |
+
+## Admin Panel & RBAC
+
+The Django Admin Panel provides comprehensive administration capabilities:
+
+### Admin Features
+- **User Management** - Create, edit, deactivate users with role badges
+- **Role-Based Access Control (RBAC)** - 9 pre-defined roles with 60+ permissions
+- **Organization Management** - Multi-tenant organization setup with default roles
+- **Audit Logging** - Track all role changes and user actions
+
+### Pre-defined Roles
+| Role | Description | Key Permissions |
+|------|-------------|-----------------|
+| Requester | Creates purchase requisitions | Create/view requisitions |
+| Budget Holder | Manages department budgets | Approve requisitions, manage budgets |
+| Procurement Officer | Handles sourcing activities | Manage RFQs/RFPs, create POs |
+| Procurement Manager | Oversees procurement team | Full procurement access |
+| Accounts Payable | Processes invoices | Manage invoices, process payments |
+| Warehouse Staff | Handles receiving | Manage goods receipts |
+| Finance Manager | Financial oversight | Full financial access |
+| Auditor | Read-only audit access | View all records |
+| Organization Admin | Full system access | All permissions |
+
+### Admin Login
+- URL: http://localhost:8000/admin/
+- Default credentials: Set via `createsuperuser` command
 
 ## API Documentation
 
