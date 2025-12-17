@@ -18,12 +18,24 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  is_active: boolean;
-  is_staff: boolean;
-  organization: string;
+  full_name?: string;
+  employee_id?: string;
+  organization: string | null;
   organization_name?: string;
-  date_joined: string;
-  last_login: string | null;
+  status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  is_active: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Legacy fields for backwards compatibility
+  date_joined?: string;
+  last_login?: string | null;
+}
+
+export interface LoginResponse {
+  message: string;
+  user: User;
 }
 
 export interface LoginCredentials {

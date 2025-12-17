@@ -24,28 +24,26 @@ export interface SupplierPayload {
   is_active?: boolean;
 }
 
+const MOCK_MODE = import.meta.env.VITE_MOCK_API === 'true';
+
 // API Functions
 export async function fetchSuppliers(filters?: SupplierFilters): Promise<PaginatedResponse<Supplier>> {
-  try {
-    const response = await apiClient.get('/suppliers/', { params: filters });
-    return response.data;
-  } catch {
-    // Return mock data if API not available
+  if (MOCK_MODE) {
     return getMockSuppliersList(filters);
   }
+  const response = await apiClient.get('/suppliers/', { params: filters });
+  return response.data;
 }
 
 export async function fetchSupplier(id: string): Promise<Supplier> {
-  try {
-    const response = await apiClient.get(`/suppliers/${id}/`);
-    return response.data;
-  } catch {
-    // Return mock data if API not available
+  if (MOCK_MODE) {
     const mockList = getMockSuppliers();
     const supplier = mockList.find(s => s.id === id);
     if (supplier) return supplier;
     throw new Error('Supplier not found');
   }
+  const response = await apiClient.get(`/suppliers/${id}/`);
+  return response.data;
 }
 
 export async function createSupplier(payload: SupplierPayload): Promise<Supplier> {

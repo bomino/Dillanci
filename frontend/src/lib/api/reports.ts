@@ -24,6 +24,7 @@ export interface KPIData {
 }
 
 export interface POStatusData {
+  [key: string]: string | number;
   name: string;
   value: number;
   color: string;

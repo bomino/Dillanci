@@ -21,7 +21,7 @@ type AuthStore = AuthState & AuthActions;
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       // Initial state
       user: null,
       isAuthenticated: false,
@@ -69,15 +69,7 @@ export const useAuthStore = create<AuthStore>()(
 
       // Check authentication status
       checkAuth: async () => {
-        const state = get();
-
-        // If we have persisted auth state with user, use that immediately
-        if (state.isAuthenticated && state.user) {
-          set({ isLoading: false });
-          return;
-        }
-
-        // Set loading and try to fetch current user
+        // Always verify with the backend to ensure session is valid
         set({ isLoading: true });
         try {
           const user = await authApi.getCurrentUser();
@@ -88,6 +80,7 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           });
         } catch (error) {
+          // Session invalid or expired - clear local state
           set({
             user: null,
             isAuthenticated: false,

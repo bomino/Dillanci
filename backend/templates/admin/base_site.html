@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Dillanci Admin{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dillanci.css' %}">
+<link rel="icon" type="image/x-icon" href="{% static 'admin/img/favicon.ico' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'admin/img/dillanci-logo.svg' %}"
+             alt="Dillanci"
+             class="dillanci-admin-logo"
+             onerror="this.onerror=null; this.src='{% static 'admin/img/dillanci-logo.png' %}';">
+    </a>
+</div>
+{% endblock %}
+
+{% block welcome-msg %}
+<span class="dillanci-welcome">
+    {% if user.get_full_name %}
+        Welcome, <strong>{{ user.get_full_name }}</strong>
+    {% else %}
+        Welcome, <strong>{{ user.get_username }}</strong>
+    {% endif %}
+</span>
+{% endblock %}

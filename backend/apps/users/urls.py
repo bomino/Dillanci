@@ -10,11 +10,15 @@ from apps.users.views import (
     LogoutView,
     MeView,
     PasswordChangeView,
+    RoleChangeLogViewSet,
+    RoleViewSet,
     UserViewSet,
 )
 
 router = DefaultRouter()
-router.register(r'', UserViewSet, basename='user')
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'roles', RoleViewSet, basename='role')
+router.register(r'role-changes', RoleChangeLogViewSet, basename='role-change')
 
 urlpatterns = [
     # Authentication endpoints
@@ -23,6 +27,6 @@ urlpatterns = [
     path('auth/me/', MeView.as_view(), name='me'),
     path('auth/password/', PasswordChangeView.as_view(), name='password-change'),
 
-    # User management (admin)
+    # User and role management (admin)
     path('', include(router.urls)),
 ]

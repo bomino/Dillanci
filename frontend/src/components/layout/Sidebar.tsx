@@ -13,9 +13,15 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Shield,
+  UserCog,
+  GitBranch,
+  ClipboardList,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface NavItem {
   label: string;
@@ -24,7 +30,7 @@ interface NavItem {
   badge?: number;
 }
 
-const navItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, href: '/dashboard' },
   { label: 'Requisitions', icon: <FileText className="h-5 w-5" />, href: '/requisitions' },
   { label: 'RFQs', icon: <FileQuestion className="h-5 w-5" />, href: '/rfqs' },
@@ -37,12 +43,60 @@ const navItems: NavItem[] = [
   { label: 'Reports', icon: <BarChart3 className="h-5 w-5" />, href: '/reports' },
 ];
 
+const adminNavItems: NavItem[] = [
+  { label: 'Users', icon: <UserCog className="h-5 w-5" />, href: '/admin/users' },
+  { label: 'Roles', icon: <Shield className="h-5 w-5" />, href: '/admin/roles' },
+  { label: 'Workflows', icon: <GitBranch className="h-5 w-5" />, href: '/admin/workflows' },
+  { label: 'Audit Logs', icon: <ClipboardList className="h-5 w-5" />, href: '/admin/audit-logs' },
+  { label: 'Organization', icon: <Building2 className="h-5 w-5" />, href: '/admin/organization' },
+];
+
 const bottomNavItems: NavItem[] = [
   { label: 'Settings', icon: <Settings className="h-5 w-5" />, href: '/settings' },
 ];
 
+function NavItemComponent({ item, sidebarCollapsed }: { item: NavItem; sidebarCollapsed: boolean }) {
+  return (
+    <NavLink
+      to={item.href}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+          'hover:bg-neutral-100',
+          isActive
+            ? 'bg-primary-50 text-primary-700 font-medium'
+            : 'text-neutral-600'
+        )
+      }
+    >
+      <span className="flex-shrink-0">{item.icon}</span>
+      <AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.span
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: 'auto' }}
+            exit={{ opacity: 0, width: 0 }}
+            className="whitespace-nowrap overflow-hidden text-sm"
+          >
+            {item.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+      {item.badge && !sidebarCollapsed && (
+        <span className="ml-auto bg-primary-100 text-primary-700 text-xs font-medium px-2 py-0.5 rounded-full">
+          {item.badge}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { user } = useAuthStore();
+
+  // Show admin section for staff/superusers
+  const showAdminSection = user?.is_staff || user?.is_superuser;
 
   return (
     <motion.aside
@@ -61,9 +115,9 @@ export function Sidebar() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.15 }}
-              className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center"
+              className="w-10 h-10 flex items-center justify-center"
             >
-              <span className="text-white font-bold text-lg">D</span>
+              <img src="/images/icon.svg" alt="Dillanci" className="w-10 h-10" />
             </motion.div>
           ) : (
             <motion.div
@@ -72,14 +126,9 @@ export function Sidebar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex items-center gap-2"
+              className="flex items-center"
             >
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">D</span>
-              </div>
-              <span className="font-bold text-xl bg-gradient-to-r from-primary-700 via-primary-500 to-primary-700 bg-clip-text text-transparent">
-                Dillanci
-              </span>
+              <img src="/images/logo-full.svg" alt="Dillanci" className="h-10 w-auto" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -87,43 +136,53 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
+        {/* Main navigation */}
         <ul className="space-y-1">
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <li key={item.href}>
-              <NavLink
-                to={item.href}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                    'hover:bg-neutral-100',
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-neutral-600'
-                  )
-                }
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                <AnimatePresence>
-                  {!sidebarCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="whitespace-nowrap overflow-hidden text-sm"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                {item.badge && !sidebarCollapsed && (
-                  <span className="ml-auto bg-primary-100 text-primary-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
-              </NavLink>
+              <NavItemComponent item={item} sidebarCollapsed={sidebarCollapsed} />
             </li>
           ))}
         </ul>
+
+        {/* Admin section */}
+        {showAdminSection && (
+          <div className="mt-6">
+            {/* Section divider */}
+            <div className="px-3 mb-2">
+              <AnimatePresence>
+                {!sidebarCollapsed ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="h-px flex-1 bg-neutral-200" />
+                    <span className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                      Admin
+                    </span>
+                    <div className="h-px flex-1 bg-neutral-200" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-px bg-neutral-200"
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+            <ul className="space-y-1">
+              {adminNavItems.map((item) => (
+                <li key={item.href}>
+                  <NavItemComponent item={item} sidebarCollapsed={sidebarCollapsed} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </nav>
 
       {/* Bottom navigation */}
@@ -131,32 +190,7 @@ export function Sidebar() {
         <ul className="space-y-1">
           {bottomNavItems.map((item) => (
             <li key={item.href}>
-              <NavLink
-                to={item.href}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                    'hover:bg-neutral-100',
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-neutral-600'
-                  )
-                }
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                <AnimatePresence>
-                  {!sidebarCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="whitespace-nowrap overflow-hidden text-sm"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </NavLink>
+              <NavItemComponent item={item} sidebarCollapsed={sidebarCollapsed} />
             </li>
           ))}
         </ul>

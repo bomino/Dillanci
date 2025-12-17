@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardDescription } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api/client';
 
 // Validation schema
@@ -57,13 +57,12 @@ export function LoginPage() {
           <CardHeader className="space-y-1 text-center pb-2">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-700 to-primary-900 flex items-center justify-center shadow-lg">
-                <span className="text-2xl font-bold text-white">D</span>
-              </div>
+              <img
+                src="/images/logo-full.svg"
+                alt="Dillanci"
+                className="h-20 w-auto"
+              />
             </div>
-            <CardTitle className="text-2xl font-bold text-primary-900">
-              Dillanci
-            </CardTitle>
             <CardDescription className="text-neutral-500">
               Enterprise Sourcing & Procurement Platform
             </CardDescription>

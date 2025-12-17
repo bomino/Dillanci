@@ -18,6 +18,13 @@ import { SettingsPage } from '@/pages/settings';
 import { ProfilePage } from '@/pages/profile';
 import { Toaster } from '@/components/ui/toast';
 
+// Admin Pages
+import { UsersPage, UserDetailPage } from '@/pages/admin/users';
+import { RolesPage, RoleDetailPage } from '@/pages/admin/roles';
+import { AuditLogsPage } from '@/pages/admin/audit';
+import { WorkflowsPage } from '@/pages/admin/workflows';
+import { AdminSettingsPage } from '@/pages/admin/settings';
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,6 +94,15 @@ function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+
+              {/* Admin routes */}
+              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/users/:id" element={<UserDetailPage />} />
+              <Route path="/admin/roles" element={<RolesPage />} />
+              <Route path="/admin/roles/:id" element={<RoleDetailPage />} />
+              <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/admin/workflows" element={<WorkflowsPage />} />
+              <Route path="/admin/organization" element={<AdminSettingsPage />} />
             </Route>
 
             {/* Redirect root to dashboard */}

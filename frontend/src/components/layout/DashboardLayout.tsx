@@ -29,9 +29,11 @@ export function DashboardLayout() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-700 to-primary-900 flex items-center justify-center animate-pulse">
-            <span className="text-xl font-bold text-white">D</span>
-          </div>
+          <img
+            src="/images/icon.svg"
+            alt="Dillanci"
+            className="w-16 h-16 animate-pulse"
+          />
           <p className="text-neutral-500 text-sm">Loading...</p>
         </div>
       </div>
