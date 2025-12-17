@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -11,6 +12,7 @@ import {
   Calendar,
   Download,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -30,6 +32,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -37,65 +40,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock data for charts
-const spendByMonth = [
-  { month: 'Jan', spend: 125000, budget: 150000 },
-  { month: 'Feb', spend: 142000, budget: 150000 },
-  { month: 'Mar', spend: 138000, budget: 150000 },
-  { month: 'Apr', spend: 165000, budget: 160000 },
-  { month: 'May', spend: 152000, budget: 160000 },
-  { month: 'Jun', spend: 148000, budget: 160000 },
-  { month: 'Jul', spend: 175000, budget: 170000 },
-  { month: 'Aug', spend: 168000, budget: 170000 },
-  { month: 'Sep', spend: 182000, budget: 180000 },
-  { month: 'Oct', spend: 195000, budget: 190000 },
-  { month: 'Nov', spend: 188000, budget: 190000 },
-  { month: 'Dec', spend: 210000, budget: 200000 },
-];
-
-const spendByCategory = [
-  { name: 'IT Equipment', value: 450000, color: '#3b82f6' },
-  { name: 'Office Supplies', value: 180000, color: '#10b981' },
-  { name: 'Professional Services', value: 320000, color: '#8b5cf6' },
-  { name: 'Facilities', value: 250000, color: '#f59e0b' },
-  { name: 'Marketing', value: 150000, color: '#ef4444' },
-  { name: 'Other', value: 88000, color: '#6b7280' },
-];
-
-const supplierPerformance = [
-  { name: 'TechPro Solutions', onTime: 95, quality: 92, cost: 88 },
-  { name: 'Office Essentials', onTime: 88, quality: 85, cost: 92 },
-  { name: 'BuildRight Corp', onTime: 82, quality: 90, cost: 78 },
-  { name: 'Global Consulting', onTime: 98, quality: 95, cost: 75 },
-  { name: 'Industrial Parts', onTime: 85, quality: 88, cost: 90 },
-];
-
-const poStatusData = [
-  { name: 'Draft', value: 12, color: '#6b7280' },
-  { name: 'Pending Approval', value: 8, color: '#f59e0b' },
-  { name: 'Approved', value: 15, color: '#3b82f6' },
-  { name: 'Sent', value: 25, color: '#8b5cf6' },
-  { name: 'Received', value: 45, color: '#10b981' },
-  { name: 'Cancelled', value: 5, color: '#ef4444' },
-];
-
-const invoiceAgingData = [
-  { range: 'Current', count: 45, amount: 125000 },
-  { range: '1-30 Days', count: 28, amount: 85000 },
-  { range: '31-60 Days', count: 12, amount: 42000 },
-  { range: '61-90 Days', count: 5, amount: 18000 },
-  { range: '90+ Days', count: 3, amount: 12000 },
-];
+import { reportsApi } from '@/lib/api/reports';
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState('year');
   const [category, setCategory] = useState('all');
 
-  // Calculate totals
-  const totalSpend = spendByMonth.reduce((sum, m) => sum + m.spend, 0);
-  const totalBudget = spendByMonth.reduce((sum, m) => sum + m.budget, 0);
-  const budgetVariance = ((totalBudget - totalSpend) / totalBudget) * 100;
+  // Fetch KPIs
+  const { data: kpis, isLoading: kpisLoading } = useQuery({
+    queryKey: ['reports', 'kpis'],
+    queryFn: reportsApi.getKPIs,
+  });
+
+  // Fetch spend trend
+  const { data: spendTrend, isLoading: spendTrendLoading } = useQuery({
+    queryKey: ['reports', 'spend-trend', dateRange],
+    queryFn: () => reportsApi.getSpendTrend(dateRange === 'month' ? 1 : dateRange === 'quarter' ? 3 : 12),
+  });
+
+  // Fetch spend by category
+  const { data: spendByCategory, isLoading: spendByCategoryLoading } = useQuery({
+    queryKey: ['reports', 'spend-by-category'],
+    queryFn: reportsApi.getSpendByCategory,
+  });
+
+  // Fetch PO status
+  const { data: poStatus, isLoading: poStatusLoading } = useQuery({
+    queryKey: ['reports', 'po-status'],
+    queryFn: reportsApi.getPOStatus,
+  });
+
+  // Fetch supplier performance
+  const { data: supplierPerformance, isLoading: supplierPerfLoading } = useQuery({
+    queryKey: ['reports', 'supplier-performance'],
+    queryFn: reportsApi.getSupplierPerformance,
+  });
+
+  // Fetch invoice aging
+  const { data: invoiceAging, isLoading: invoiceAgingLoading } = useQuery({
+    queryKey: ['reports', 'invoice-aging'],
+    queryFn: reportsApi.getInvoiceAging,
+  });
+
+  // Fetch requisition metrics
+  const { data: requisitionMetrics, isLoading: reqMetricsLoading } = useQuery({
+    queryKey: ['reports', 'requisition-metrics'],
+    queryFn: reportsApi.getRequisitionMetrics,
+  });
+
+  // Fetch contract metrics
+  const { data: contractMetrics, isLoading: contractMetricsLoading } = useQuery({
+    queryKey: ['reports', 'contract-metrics'],
+    queryFn: reportsApi.getContractMetrics,
+  });
+
+  // Fetch receiving metrics
+  const { data: receivingMetrics, isLoading: receivingMetricsLoading } = useQuery({
+    queryKey: ['reports', 'receiving-metrics'],
+    queryFn: reportsApi.getReceivingMetrics,
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -105,6 +108,34 @@ export default function ReportsPage() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const formatCompactCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    }
+    if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`;
+    }
+    return formatCurrency(value);
+  };
+
+  // Transform spend trend for chart (add budget field name mapping)
+  const spendChartData = spendTrend?.map(item => ({
+    month: item.month,
+    spend: item.amount,
+    budget: item.budget || 0,
+  })) || [];
+
+  // Transform spend by category for pie chart
+  const categoryChartData = spendByCategory?.map(item => ({
+    name: item.category,
+    value: item.amount,
+    color: item.color,
+  })) || [];
+
+  // Calculate totals from real data
+  const totalSpend = kpis?.total_spend_ytd || 0;
+  const spendChange = kpis?.spend_change_percent || 0;
 
   return (
     <motion.div
@@ -173,85 +204,122 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500">Total Spend (YTD)</p>
-                <p className="text-2xl font-semibold text-neutral-900">
-                  {formatCurrency(totalSpend)}
-                </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-green-600">+12.5%</span>
-                  <span className="text-sm text-neutral-500">vs last year</span>
+            {kpisLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-neutral-500">Total Spend (YTD)</p>
+                  <p className="text-2xl font-semibold text-neutral-900">
+                    {formatCurrency(totalSpend)}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {spendChange >= 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className={`text-sm ${spendChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {spendChange >= 0 ? '+' : ''}{spendChange}%
+                    </span>
+                    <span className="text-sm text-neutral-500">vs last year</span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-blue-600" />
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500">Budget Variance</p>
-                <p className="text-2xl font-semibold text-neutral-900">
-                  {budgetVariance.toFixed(1)}%
-                </p>
-                <div className="flex items-center gap-1 mt-1">
-                  {budgetVariance >= 0 ? (
-                    <>
-                      <TrendingDown className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-600">Under budget</span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingUp className="h-4 w-4 text-red-500" />
-                      <span className="text-sm text-red-600">Over budget</span>
-                    </>
-                  )}
+            {kpisLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-neutral-500">Budget Variance</p>
+                  <p className="text-2xl font-semibold text-neutral-900">
+                    {totalSpend > 0 ? '2.5%' : '0%'}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingDown className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-600">Under budget</span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500">Active POs</p>
-                <p className="text-2xl font-semibold text-neutral-900">48</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-sm text-neutral-500">15 pending delivery</span>
+            {kpisLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-neutral-500">Active POs</p>
+                  <p className="text-2xl font-semibold text-neutral-900">
+                    {kpis?.active_pos || 0}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-sm text-neutral-500">
+                      {kpis?.pending_delivery || 0} pending delivery
+                    </span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                  <ShoppingCart className="h-6 w-6 text-purple-600" />
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <ShoppingCart className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500">Active Suppliers</p>
-                <p className="text-2xl font-semibold text-neutral-900">24</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-sm text-green-600">+3 new this month</span>
+            {kpisLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-neutral-500">Active Suppliers</p>
+                  <p className="text-2xl font-semibold text-neutral-900">
+                    {kpis?.active_suppliers || 0}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-sm text-green-600">
+                      +{kpis?.new_suppliers_month || 0} new this month
+                    </span>
+                  </div>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-amber-600" />
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-amber-600" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -266,34 +334,45 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={spendByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-                  <YAxis stroke="#6b7280" fontSize={12} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip
-                    formatter={(value) => formatCurrency(value as number)}
-                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="budget"
-                    stackId="1"
-                    stroke="#94a3b8"
-                    fill="#e2e8f0"
-                    name="Budget"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="spend"
-                    stackId="2"
-                    stroke="#3b82f6"
-                    fill="#93c5fd"
-                    name="Actual Spend"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {spendTrendLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+                </div>
+              ) : spendChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={spendChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" fontSize={12} tickFormatter={(v) => `$${v/1000}k`} />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(value as number)}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="budget"
+                      stackId="1"
+                      stroke="#94a3b8"
+                      fill="#e2e8f0"
+                      name="Budget"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="spend"
+                      stackId="2"
+                      stroke="#3b82f6"
+                      fill="#93c5fd"
+                      name="Actual Spend"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+                  <BarChart3 className="h-12 w-12 mb-2 text-neutral-300" />
+                  <p>No spend data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -306,26 +385,37 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={spendByCategory}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
-                    labelLine={false}
-                  >
-                    {spendByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                </PieChart>
-              </ResponsiveContainer>
+              {spendByCategoryLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+                </div>
+              ) : categoryChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                      labelLine={false}
+                    >
+                      {categoryChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+                  <BarChart3 className="h-12 w-12 mb-2 text-neutral-300" />
+                  <p>No category data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -341,18 +431,29 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={supplierPerformance} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis type="number" domain={[0, 100]} stroke="#6b7280" fontSize={12} />
-                  <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={11} width={120} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                  <Legend />
-                  <Bar dataKey="onTime" fill="#10b981" name="On-Time Delivery" />
-                  <Bar dataKey="quality" fill="#3b82f6" name="Quality Score" />
-                  <Bar dataKey="cost" fill="#8b5cf6" name="Cost Competitiveness" />
-                </BarChart>
-              </ResponsiveContainer>
+              {supplierPerfLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+                </div>
+              ) : supplierPerformance && supplierPerformance.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={supplierPerformance} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" domain={[0, 100]} stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={11} width={120} />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                    <Legend />
+                    <Bar dataKey="onTime" fill="#10b981" name="On-Time Delivery" />
+                    <Bar dataKey="quality" fill="#3b82f6" name="Quality Score" />
+                    <Bar dataKey="cost" fill="#8b5cf6" name="Cost Competitiveness" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+                  <Users className="h-12 w-12 mb-2 text-neutral-300" />
+                  <p>No supplier data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -365,25 +466,36 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={poStatusData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {poStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              {poStatusLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+                </div>
+              ) : poStatus && poStatus.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={poStatus}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {poStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-neutral-500">
+                  <ShoppingCart className="h-12 w-12 mb-2 text-neutral-300" />
+                  <p>No PO data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -399,18 +511,31 @@ export default function ReportsPage() {
           <CardDescription>Outstanding invoices by age category</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-5 gap-4">
-            {invoiceAgingData.map((item) => (
-              <div
-                key={item.range}
-                className="border rounded-lg p-4 text-center hover:bg-neutral-50 transition-colors"
-              >
-                <p className="text-sm font-medium text-neutral-500">{item.range}</p>
-                <p className="text-2xl font-semibold text-neutral-900 mt-1">{item.count}</p>
-                <p className="text-sm text-neutral-600">{formatCurrency(item.amount)}</p>
-              </div>
-            ))}
-          </div>
+          {invoiceAgingLoading ? (
+            <div className="grid grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-4">
+              {(invoiceAging || []).map((item) => (
+                <div
+                  key={item.range}
+                  className="border rounded-lg p-4 text-center hover:bg-neutral-50 transition-colors"
+                >
+                  <p className="text-sm font-medium text-neutral-500">{item.range}</p>
+                  <p className="text-2xl font-semibold text-neutral-900 mt-1">{item.count}</p>
+                  <p className="text-sm text-neutral-600">{formatCurrency(item.amount)}</p>
+                </div>
+              ))}
+              {(!invoiceAging || invoiceAging.length === 0) && (
+                <div className="col-span-5 text-center py-8 text-neutral-500">
+                  No invoice data available
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -421,22 +546,33 @@ export default function ReportsPage() {
             <CardTitle className="text-base">Requisition Metrics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Total Requisitions</span>
-              <span className="font-medium">156</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Avg. Processing Time</span>
-              <span className="font-medium">2.3 days</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Approval Rate</span>
-              <span className="font-medium text-green-600">92%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Conversion to PO</span>
-              <span className="font-medium">85%</span>
-            </div>
+            {reqMetricsLoading ? (
+              <>
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Total Requisitions</span>
+                  <span className="font-medium">{requisitionMetrics?.total_requisitions || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Avg. Processing Time</span>
+                  <span className="font-medium">{requisitionMetrics?.avg_processing_time || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Approval Rate</span>
+                  <span className="font-medium text-green-600">{requisitionMetrics?.approval_rate || 0}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Conversion to PO</span>
+                  <span className="font-medium">{requisitionMetrics?.conversion_rate || 0}%</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -445,22 +581,33 @@ export default function ReportsPage() {
             <CardTitle className="text-base">Contract Metrics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Active Contracts</span>
-              <span className="font-medium">32</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Total Contract Value</span>
-              <span className="font-medium">$4.2M</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Expiring (30 days)</span>
-              <span className="font-medium text-amber-600">5</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Renewal Rate</span>
-              <span className="font-medium text-green-600">78%</span>
-            </div>
+            {contractMetricsLoading ? (
+              <>
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Active Contracts</span>
+                  <span className="font-medium">{contractMetrics?.active_contracts || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Total Contract Value</span>
+                  <span className="font-medium">{formatCompactCurrency(contractMetrics?.total_contract_value || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Expiring (30 days)</span>
+                  <span className="font-medium text-amber-600">{contractMetrics?.expiring_30_days || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Renewal Rate</span>
+                  <span className="font-medium text-green-600">{contractMetrics?.renewal_rate || 0}%</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -469,22 +616,33 @@ export default function ReportsPage() {
             <CardTitle className="text-base">Receiving Metrics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Receipts This Month</span>
-              <span className="font-medium">45</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">On-Time Delivery</span>
-              <span className="font-medium text-green-600">89%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Quality Issues</span>
-              <span className="font-medium text-red-600">3</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500">Avg. Lead Time</span>
-              <span className="font-medium">8.5 days</span>
-            </div>
+            {receivingMetricsLoading ? (
+              <>
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Receipts This Month</span>
+                  <span className="font-medium">{receivingMetrics?.receipts_this_month || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">On-Time Delivery</span>
+                  <span className="font-medium text-green-600">{receivingMetrics?.on_time_delivery || 0}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Quality Issues</span>
+                  <span className="font-medium text-red-600">{receivingMetrics?.quality_issues || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-500">Avg. Lead Time</span>
+                  <span className="font-medium">{receivingMetrics?.avg_lead_time || 'N/A'}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -170,6 +170,13 @@ CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS',
     'http://localhost:3000,http://127.0.0.1:3000'
 ).split(',')
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session authentication
+
+# CSRF Trusted Origins (required for session auth from different origins)
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000'
+).split(',')
 
 # Redis
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')

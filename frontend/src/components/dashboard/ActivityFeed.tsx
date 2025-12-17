@@ -107,7 +107,8 @@ const getActionConfig = (action: string) => {
   return { icon: <Clock className="h-4 w-4" />, color: 'text-neutral-600', bgColor: 'bg-neutral-100' };
 };
 
-function getInitials(name: string): string {
+function getInitials(name: string | undefined | null): string {
+  if (!name) return '?';
   return name
     .split(' ')
     .map((n) => n[0])
@@ -213,7 +214,7 @@ export function ActivityFeed({
                       </span>
                       <span className="text-xs text-neutral-300">•</span>
                       <span className="text-xs text-neutral-500">
-                        {activity.user}
+                        {activity.user || 'Unknown'}
                       </span>
                     </div>
                   </div>
