@@ -94,9 +94,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install development dependencies
-COPY requirements/development.txt requirements/development.txt
-RUN pip install --no-cache-dir -r requirements/development.txt 2>/dev/null || true
+# Copy ALL requirements files and install development dependencies
+COPY requirements/ requirements/
+RUN pip install --no-cache-dir -r requirements/development.txt
 
 # Set Python environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

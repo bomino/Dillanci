@@ -67,7 +67,11 @@ services:
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - DB_NAME=${POSTGRES_DB:-dillanci}
+      - DB_USER=${POSTGRES_USER:-dillanci}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-dillanci_secret}
+      - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80,http://frontend}
@@ -129,7 +133,11 @@ services:
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - DB_NAME=${POSTGRES_DB:-dillanci}
+      - DB_USER=${POSTGRES_USER:-dillanci}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-dillanci_secret}
+      - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
     volumes:
@@ -158,7 +166,11 @@ services:
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-dillanci}:${POSTGRES_PASSWORD:-dillanci_secret}@db:5432/${POSTGRES_DB:-dillanci}
+      - DB_NAME=${POSTGRES_DB:-dillanci}
+      - DB_USER=${POSTGRES_USER:-dillanci}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-dillanci_secret}
+      - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
     volumes:
