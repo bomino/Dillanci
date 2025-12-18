@@ -221,6 +221,48 @@ Formal commitment to buy goods/services from a supplier at agreed terms.
 - Supplier acknowledgment is tracked but optional
 - Partial receipts are allowed
 
+### 5.5 Requisition ↔ Purchase Order Relationship
+
+The system supports a **One-to-Many** relationship between Requisitions and Purchase Orders:
+
+```
+┌─────────────────┐         ┌─────────────────┐
+│   REQUISITION   │ 1     n │ PURCHASE ORDER  │
+│                 │────────>│                 │
+│ REQ-2024-00001  │         │ PO-2024-00001   │
+│                 │         │ PO-2024-00002   │
+│                 │         │ PO-2024-00003   │
+└─────────────────┘         └─────────────────┘
+```
+
+**Key Features:**
+
+| Feature | Description |
+|---------|-------------|
+| **Convert to PO** | APPROVED requisitions can be converted to POs with supplier selection |
+| **Multiple POs** | One requisition can generate multiple POs (e.g., split by supplier) |
+| **Line Traceability** | Each PO line links back to source requisition line |
+| **Fulfillment Tracking** | Visual progress bar shows % of requisition lines ordered |
+| **Bi-directional Navigation** | Navigate from REQ → POs and PO → Source REQ |
+| **Duplicate Warning** | UI warns when creating additional POs from same requisition |
+
+**Frontend Visualization:**
+
+- **Requisition Detail Page:**
+  - "Purchase Orders" card shows all POs created from this requisition
+  - Timeline view with status badges and amounts
+  - "Fulfillment Progress" card with stats grid
+  - Line items show "PO" badge if converted
+
+- **Purchase Orders List Page:**
+  - "Source Req" column shows linked requisition number
+  - Clickable link navigates to source requisition
+
+- **PO Detail Page:**
+  - "Source Requisition" card with premium styling
+  - "Receiving Progress" card with progress bar
+  - Line items show "REQ" badge if from requisition
+
 ---
 
 ## 6. GOODS RECEIPT WORKFLOW
@@ -773,7 +815,7 @@ The sidebar dynamically shows/hides navigation items based on user permissions:
 
 | Field | Value |
 |-------|-------|
-| Version | 1.1 |
+| Version | 1.2 |
 | Created | December 2024 |
 | Updated | December 2024 |
 | Platform | Dillanci Enterprise Procurement |
@@ -785,6 +827,7 @@ The sidebar dynamically shows/hides navigation items based on user permissions:
 |---------|------|---------|
 | 1.0 | December 2024 | Initial workflow documentation |
 | 1.1 | December 2024 | Added frontend RBAC implementation details, updated route permissions |
+| 1.2 | December 2024 | Added Requisition ↔ Purchase Order relationship section with fulfillment tracking |
 
 ---
 

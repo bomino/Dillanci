@@ -22,6 +22,9 @@ class POLineSerializer(serializers.ModelSerializer):
     remaining_quantity = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    requisition_line_id = serializers.UUIDField(
+        source='requisition_line.id', read_only=True
+    )
 
     class Meta:
         model = POLine
@@ -39,6 +42,8 @@ class POLineSerializer(serializers.ModelSerializer):
             'catalog_item_sku',
             'rfq_line',
             'bid_line',
+            'requisition_line',
+            'requisition_line_id',
             'quantity_received',
             'remaining_quantity',
             'created_at',
@@ -46,7 +51,7 @@ class POLineSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'line_number', 'extended_amount', 'remaining_quantity',
-            'created_at', 'updated_at'
+            'requisition_line_id', 'created_at', 'updated_at'
         ]
 
 
@@ -91,6 +96,15 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     rfq_number = serializers.CharField(
         source='rfq.number', read_only=True
     )
+    requisition_id = serializers.UUIDField(
+        source='requisition.id', read_only=True
+    )
+    requisition_number = serializers.CharField(
+        source='requisition.number', read_only=True
+    )
+    requisition_title = serializers.CharField(
+        source='requisition.title', read_only=True
+    )
     total_amount = serializers.DecimalField(
         max_digits=14, decimal_places=2, read_only=True
     )
@@ -131,6 +145,10 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'rfq',
             'rfq_number',
             'bid',
+            'requisition',
+            'requisition_id',
+            'requisition_number',
+            'requisition_title',
             'ship_to_address',
             'shipping_terms',
             'payment_terms',
@@ -153,6 +171,9 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'sent_at',
             'received_at',
             'completed_at',
+            'requisition_id',
+            'requisition_number',
+            'requisition_title',
             'created_at',
             'updated_at',
         ]
@@ -202,6 +223,9 @@ class PurchaseOrderListSerializer(serializers.ModelSerializer):
     total_amount = serializers.DecimalField(
         max_digits=14, decimal_places=2, read_only=True
     )
+    requisition_number = serializers.CharField(
+        source='requisition.number', read_only=True
+    )
 
     class Meta:
         model = PurchaseOrder
@@ -215,6 +239,8 @@ class PurchaseOrderListSerializer(serializers.ModelSerializer):
             'budget_line_code',
             'status',
             'total_amount',
+            'requisition',
+            'requisition_number',
             'submitted_at',
             'approved_at',
             'created_at',
@@ -232,3 +258,10 @@ class CreateFromBidSerializer(serializers.Serializer):
 
     bid_id = serializers.UUIDField()
     budget_line_id = serializers.UUIDField()
+
+
+class CreateFromRequisitionSerializer(serializers.Serializer):
+    """Serializer for creating PO from approved requisition."""
+
+    requisition_id = serializers.UUIDField()
+    supplier_id = serializers.UUIDField()

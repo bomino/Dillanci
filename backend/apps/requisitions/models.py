@@ -252,3 +252,84 @@ class RequisitionLine(SoftDeleteModel):
     def extended_amount(self) -> Decimal:
         """Calculate extended amount (quantity * unit_price)."""
         return self.quantity * self.unit_price
+
+
+class RequisitionTemplate(SoftDeleteModel):
+    """
+    Reusable requisition template with pre-configured line items.
+
+    Users can save requisitions as templates to quickly create new ones
+    with common items and settings.
+    """
+
+    PRIORITIES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('URGENT', 'Urgent'),
+    ]
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='requisition_templates',
+    )
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    department = models.CharField(max_length=50)
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITIES,
+        default='MEDIUM',
+    )
+    currency = models.CharField(max_length=3, default='USD')
+    is_public = models.BooleanField(
+        default=False,
+        help_text='If true, all users in the organization can use this template',
+    )
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='created_requisition_templates',
+    )
+    use_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'requisition_template'
+        verbose_name = 'Requisition Template'
+        verbose_name_plural = 'Requisition Templates'
+        ordering = ['-use_count', '-updated_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.organization.name})'
+
+    def increment_use_count(self):
+        """Increment the use counter for this template."""
+        self.use_count += 1
+        self.save(update_fields=['use_count', 'updated_at'])
+
+
+class RequisitionTemplateLine(SoftDeleteModel):
+    """
+    Line item within a requisition template.
+    """
+
+    template = models.ForeignKey(
+        RequisitionTemplate,
+        on_delete=models.CASCADE,
+        related_name='lines',
+    )
+    description = models.CharField(max_length=500)
+    quantity = models.CharField(max_length=20, default='1')
+    unit_of_measure = models.CharField(max_length=20, default='EA')
+    estimated_unit_price = models.CharField(max_length=20, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'requisition_template_line'
+        verbose_name = 'Requisition Template Line'
+        verbose_name_plural = 'Requisition Template Lines'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.template.name} - {self.description[:50]}'

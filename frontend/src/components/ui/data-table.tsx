@@ -251,6 +251,10 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: Row<TData>) => void;
   className?: string;
   getRowId?: (row: TData) => string;
+  // Row selection props
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
+  enableRowSelection?: boolean;
 }
 
 function DataTable<TData, TValue>({
@@ -266,11 +270,18 @@ function DataTable<TData, TValue>({
   onRowClick,
   className,
   getRowId,
+  rowSelection: controlledRowSelection,
+  onRowSelectionChange,
+  enableRowSelection = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({});
+
+  // Use controlled or uncontrolled row selection
+  const rowSelection = controlledRowSelection ?? internalRowSelection;
+  const setRowSelection = onRowSelectionChange ?? setInternalRowSelection;
 
   const table = useReactTable({
     data,
@@ -404,4 +415,4 @@ export {
   createSelectColumn,
 };
 
-export type { DataTableProps };
+export type { DataTableProps, RowSelectionState };

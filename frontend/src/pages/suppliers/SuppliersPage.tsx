@@ -563,6 +563,7 @@ export default function SuppliersPage() {
                 { key: 'city', header: 'City' },
                 { key: 'country', header: 'Country' },
               ]}
+              serverExportUrl="/suppliers/export/"
             />
           </div>
 

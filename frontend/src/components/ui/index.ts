@@ -130,3 +130,11 @@ export {
 
 // Animated Background
 export { AnimatedBackground } from './AnimatedBackground';
+
+// Activity Timeline
+export { ActivityTimeline } from './activity-timeline';
+export type { ActivityTimelineProps } from './activity-timeline';
+
+// Bulk Action Toolbar
+export { BulkActionToolbar } from './bulk-action-toolbar';
+export type { BulkActionToolbarProps, BulkActionResult } from './bulk-action-toolbar';

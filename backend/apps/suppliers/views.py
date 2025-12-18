@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.core.exceptions import InvalidStateTransitionError
+from apps.core.export_mixin import ExportMixin
 from apps.suppliers.models import Supplier
 from apps.suppliers.serializers import (
     SupplierCreateSerializer,
@@ -16,7 +17,7 @@ from apps.suppliers.serializers import (
 )
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
+class SupplierViewSet(ExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for supplier management with state transition actions.
 
@@ -35,6 +36,20 @@ class SupplierViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'code', 'contact_name', 'contact_email']
     ordering_fields = ['name', 'created_at', 'status']
     ordering = ['name']
+
+    # Export configuration
+    export_filename = 'suppliers'
+    export_fields = [
+        ('code', 'Supplier Code'),
+        ('name', 'Supplier Name'),
+        ('status', 'Status'),
+        ('contact_name', 'Contact Name'),
+        ('contact_email', 'Contact Email'),
+        ('contact_phone', 'Contact Phone'),
+        ('city', 'City'),
+        ('country', 'Country'),
+        ('created_at', 'Created Date'),
+    ]
 
     def get_serializer_class(self):
         if self.action == 'create':

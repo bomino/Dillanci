@@ -236,6 +236,22 @@ export type RequisitionStatus =
 
 export type RequisitionPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+// Related PO info for display in Requisition detail
+export interface RelatedPOLine {
+  id: string;
+  purchase_order_number: string;
+  quantity: string;
+}
+
+export interface RelatedPurchaseOrder {
+  id: string;
+  number: string;
+  status: string;
+  supplier_name: string;
+  total_amount: string;
+  created_at: string;
+}
+
 export interface RequisitionLine {
   id: string;
   requisition: string;
@@ -247,6 +263,9 @@ export interface RequisitionLine {
   estimated_amount: string | null;
   catalog_item: string | null;
   notes: string | null;
+  // Line fulfillment tracking
+  is_converted?: boolean;
+  po_lines?: RelatedPOLine[];
   created_at: string;
 }
 
@@ -269,6 +288,8 @@ export interface Requisition {
   total_amount: string;
   currency: string;
   lines: RequisitionLine[];
+  // Related purchase orders created from this requisition
+  purchase_orders?: RelatedPurchaseOrder[];
   created_at: string;
   updated_at: string;
 }
@@ -365,6 +386,8 @@ export interface POLine {
   extended_amount: string;
   quantity_received: string;
   unit_of_measure: string;
+  requisition_line?: string | null;
+  requisition_line_id?: string | null;
 }
 
 export interface PurchaseOrder {
@@ -382,6 +405,11 @@ export interface PurchaseOrder {
   shipping_address: string | null;
   notes: string | null;
   lines?: POLine[];
+  // Source requisition link (optional)
+  requisition?: string | null;
+  requisition_id?: string | null;
+  requisition_number?: string | null;
+  requisition_title?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -699,4 +727,16 @@ export interface NotificationSummary {
   total: number;
   unread: number;
   urgent: number;
+}
+
+// =============================================================================
+// Bulk Action Types
+// =============================================================================
+
+export interface BulkActionResult {
+  success: string[];
+  failed: { id: string; error: string }[];
+  total_processed: number;
+  total_success: number;
+  total_failed: number;
 }

@@ -8,10 +8,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.budget.models import BudgetLine
+from apps.core.bulk_action_mixin import BulkActionMixin
 from apps.core.exceptions import InvalidStateTransitionError
+from apps.core.export_mixin import ExportMixin
 from apps.purchase_orders.models import PurchaseOrder, POLine
 from apps.purchase_orders.serializers import (
     CreateFromBidSerializer,
+    CreateFromRequisitionSerializer,
     POLineCreateSerializer,
     POLineSerializer,
     PurchaseOrderCreateSerializer,
@@ -19,10 +22,12 @@ from apps.purchase_orders.serializers import (
     PurchaseOrderSerializer,
     RejectSerializer,
 )
+from apps.requisitions.models import Requisition
 from apps.rfqs.models import Bid
+from apps.suppliers.models import Supplier
 
 
-class PurchaseOrderViewSet(viewsets.ModelViewSet):
+class PurchaseOrderViewSet(BulkActionMixin, ExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for PO management with workflow actions.
 
@@ -35,6 +40,11 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     - receive: SENT -> RECEIVED
     - complete: RECEIVED -> COMPLETED
     - cancel: Any (except COMPLETED/CANCELLED) -> CANCELLED
+
+    Bulk actions:
+    - bulk-approve: Approve multiple SUBMITTED POs
+    - bulk-reject: Reject multiple SUBMITTED POs
+    - bulk-delete: Delete multiple DRAFT POs
     """
 
     queryset = PurchaseOrder.objects.all()
@@ -43,6 +53,26 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     search_fields = ['number', 'title', 'description']
     ordering_fields = ['number', 'title', 'created_at', 'status', 'total_amount']
     ordering = ['-created_at']
+
+    # Export configuration
+    export_filename = 'purchase_orders'
+    export_fields = [
+        ('number', 'PO #'),
+        ('title', 'Title'),
+        ('status', 'Status'),
+        ('supplier__name', 'Supplier'),
+        ('total_amount', 'Total Amount'),
+        ('created_at', 'Created Date'),
+        ('approved_at', 'Approved Date'),
+        ('expected_delivery', 'Expected Delivery'),
+    ]
+
+    # Bulk action configuration
+    bulk_approve_method = 'approve'
+    bulk_reject_method = 'reject'
+    bulk_approvable_statuses = ['SUBMITTED']
+    bulk_rejectable_statuses = ['SUBMITTED']
+    bulk_deletable_statuses = ['DRAFT']
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -193,6 +223,47 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             po = PurchaseOrder.create_from_bid(
                 bid=bid,
                 budget_line=budget_line,
+                created_by=request.user,
+            )
+            return Response(
+                PurchaseOrderSerializer(po).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=['post'])
+    def create_from_requisition(self, request):
+        """Create a PO from an approved requisition."""
+        serializer = CreateFromRequisitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        requisition_id = serializer.validated_data['requisition_id']
+        supplier_id = serializer.validated_data['supplier_id']
+
+        try:
+            requisition = Requisition.objects.get(id=requisition_id)
+        except Requisition.DoesNotExist:
+            return Response(
+                {'error': f'Requisition with id {requisition_id} not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            supplier = Supplier.objects.get(id=supplier_id)
+        except Supplier.DoesNotExist:
+            return Response(
+                {'error': f'Supplier with id {supplier_id} not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            po = PurchaseOrder.create_from_requisition(
+                requisition=requisition,
+                supplier=supplier,
                 created_by=request.user,
             )
             return Response(

@@ -7,7 +7,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.bulk_action_mixin import BulkActionMixin
 from apps.core.exceptions import InvalidStateTransitionError
+from apps.core.export_mixin import ExportMixin
 from apps.invoices.models import Invoice, InvoiceLine, MatchingConfiguration
 from apps.invoices.serializers import (
     DisputeSerializer,
@@ -22,7 +24,7 @@ from apps.invoices.serializers import (
 from apps.invoices.services import InvoiceService, ThreeWayMatchingService
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(BulkActionMixin, ExportMixin, viewsets.ModelViewSet):
     """
     ViewSet for Invoice management with workflow actions.
 
@@ -37,9 +39,38 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     - resolve_dispute: DISPUTED -> MATCHED
     - revise: REJECTED -> DRAFT
     - cancel: Any (except PAID) -> CANCELLED
+
+    Bulk actions:
+    - bulk-approve: Approve multiple MATCHED/VALIDATED invoices
+    - bulk-reject: Reject multiple VALIDATED invoices
+    - bulk-delete: Delete multiple DRAFT invoices
     """
 
     permission_classes = [IsAuthenticated]
+
+    # Export configuration
+    export_filename = 'invoices'
+    export_fields = [
+        ('number', 'Invoice #'),
+        ('vendor_invoice_number', 'Vendor Invoice #'),
+        ('status', 'Status'),
+        ('supplier__name', 'Supplier'),
+        ('purchase_order__number', 'PO #'),
+        ('subtotal', 'Subtotal'),
+        ('tax_amount', 'Tax'),
+        ('total_amount', 'Total Amount'),
+        ('invoice_date', 'Invoice Date'),
+        ('due_date', 'Due Date'),
+        ('created_at', 'Created Date'),
+        ('approved_at', 'Approved Date'),
+    ]
+
+    # Bulk action configuration
+    bulk_approve_method = 'approve'
+    bulk_reject_method = 'reject'
+    bulk_approvable_statuses = ['MATCHED', 'PARTIALLY_MATCHED', 'VALIDATED']
+    bulk_rejectable_statuses = ['VALIDATED']
+    bulk_deletable_statuses = ['DRAFT']
 
     def get_queryset(self):
         """Filter invoices by user's organization."""

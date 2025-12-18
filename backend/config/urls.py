@@ -14,10 +14,15 @@ from drf_spectacular.views import (
 from rest_framework.routers import DefaultRouter
 
 from apps.core.views import NotificationViewSet
+from apps.requisitions.views import RequisitionTemplateViewSet
 
 # Create router for notifications (available to all authenticated users)
 notifications_router = DefaultRouter()
 notifications_router.register(r'notifications', NotificationViewSet, basename='notification')
+
+# Create router for requisition templates
+templates_router = DefaultRouter()
+templates_router.register(r'requisition-templates', RequisitionTemplateViewSet, basename='requisition-template')
 
 # Configure Django Admin site branding
 admin.site.site_header = 'Dillanci Administration'
@@ -46,6 +51,7 @@ urlpatterns = [
     path('api/v1/', include([
         path('', include('apps.users.urls')),
         path('', include(notifications_router.urls)),  # Notifications at /api/v1/notifications/
+        path('', include(templates_router.urls)),  # Templates at /api/v1/requisition-templates/
         path('organizations/', include('apps.organizations.urls')),
         path('suppliers/', include('apps.suppliers.urls')),
         path('catalog/', include('apps.catalog.urls')),

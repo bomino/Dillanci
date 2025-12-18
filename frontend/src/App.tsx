@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth-store';
 import { DashboardLayout } from '@/components/layout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { SuppliersPage, SupplierDetailPage, CreateSupplierPage } from '@/pages/suppliers';
@@ -53,8 +54,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+        <ErrorBoundary>
+          <AuthProvider>
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
 
@@ -303,8 +305,9 @@ function App() {
                 </div>
               }
             />
-          </Routes>
-        </AuthProvider>
+            </Routes>
+          </AuthProvider>
+        </ErrorBoundary>
       </BrowserRouter>
       <Toaster />
     </QueryClientProvider>

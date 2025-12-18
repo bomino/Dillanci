@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { PurchaseOrder, POStatus } from '@/types';
+import type { PurchaseOrder, POStatus, BulkActionResult } from '@/types';
 
 // PO Status configuration
 export const PO_STATUS_CONFIG: Record<POStatus, { label: string; color: string; bgColor: string }> = {
@@ -717,6 +717,49 @@ export async function cancelPurchaseOrder(id: string): Promise<PurchaseOrder> {
   return mockPurchaseOrders[index];
 }
 
+// Create PO from Requisition
+export interface CreatePOFromRequisitionPayload {
+  requisition_id: string;
+  supplier_id: string;
+}
+
+export async function createPOFromRequisition(data: CreatePOFromRequisitionPayload): Promise<PurchaseOrder> {
+  if (!MOCK_MODE) {
+    const response = await apiClient.post('/purchase-orders/create_from_requisition/', data);
+    return response.data;
+  }
+
+  // Mock implementation
+  await delay(500);
+
+  const supplier = mockSuppliers.find(s => s.id === data.supplier_id);
+  const newPO: PurchaseOrder = {
+    id: `po-${Date.now()}`,
+    number: `PO-2024-${String(mockPurchaseOrders.length + 1).padStart(3, '0')}`,
+    organization: 'org-001',
+    supplier: data.supplier_id,
+    supplier_name: supplier?.name || 'Unknown Supplier',
+    status: 'DRAFT',
+    order_date: new Date().toISOString().split('T')[0],
+    expected_delivery_date: null,
+    total_amount: '0.00',
+    currency: 'USD',
+    payment_terms: 'Net 30',
+    shipping_address: null,
+    notes: `Created from Requisition`,
+    requisition: data.requisition_id,
+    requisition_id: data.requisition_id,
+    requisition_number: 'REQ-MOCK',
+    requisition_title: 'Mock Requisition',
+    lines: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  mockPurchaseOrders.unshift(newPO);
+  return newPO;
+}
+
 // Helper functions
 function calculateTotal(lines: POLinePayload[]): string {
   const total = lines.reduce((sum, line) => {
@@ -854,9 +897,168 @@ export function useCancelPurchaseOrder() {
   });
 }
 
+export function useCreatePOFromRequisition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createPOFromRequisition,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['requisitions'] });
+    },
+  });
+}
+
 export function useApprovedSuppliers() {
   return useQuery({
     queryKey: ['approvedSuppliers'],
     queryFn: fetchApprovedSuppliers,
+  });
+}
+
+// ============================================================================
+// BULK ACTIONS
+// ============================================================================
+
+// Re-export BulkActionResult for backwards compatibility
+export type { BulkActionResult } from '@/types';
+
+async function bulkApprovePurchaseOrders(ids: string[]): Promise<BulkActionResult> {
+  if (!MOCK_MODE) {
+    const response = await apiClient.post('/purchase-orders/bulk-approve/', { ids });
+    return response.data;
+  }
+
+  // Mock implementation
+  await delay(500);
+
+  const result: BulkActionResult = {
+    success: [],
+    failed: [],
+    total_processed: ids.length,
+    total_success: 0,
+    total_failed: 0,
+  };
+
+  for (const id of ids) {
+    const index = mockPurchaseOrders.findIndex(po => po.id === id);
+    if (index === -1) {
+      result.failed.push({ id, error: 'Purchase order not found' });
+    } else if (mockPurchaseOrders[index].status !== 'PENDING_APPROVAL') {
+      result.failed.push({ id, error: `Cannot approve PO in ${mockPurchaseOrders[index].status} status` });
+    } else {
+      mockPurchaseOrders[index] = {
+        ...mockPurchaseOrders[index],
+        status: 'APPROVED',
+        updated_at: new Date().toISOString(),
+      };
+      result.success.push(id);
+    }
+  }
+
+  result.total_success = result.success.length;
+  result.total_failed = result.failed.length;
+
+  return result;
+}
+
+async function bulkRejectPurchaseOrders(ids: string[], reason: string): Promise<BulkActionResult> {
+  if (!MOCK_MODE) {
+    const response = await apiClient.post('/purchase-orders/bulk-reject/', { ids, reason });
+    return response.data;
+  }
+
+  // Mock implementation
+  await delay(500);
+
+  const result: BulkActionResult = {
+    success: [],
+    failed: [],
+    total_processed: ids.length,
+    total_success: 0,
+    total_failed: 0,
+  };
+
+  for (const id of ids) {
+    const index = mockPurchaseOrders.findIndex(po => po.id === id);
+    if (index === -1) {
+      result.failed.push({ id, error: 'Purchase order not found' });
+    } else if (mockPurchaseOrders[index].status !== 'PENDING_APPROVAL') {
+      result.failed.push({ id, error: `Cannot reject PO in ${mockPurchaseOrders[index].status} status` });
+    } else {
+      mockPurchaseOrders[index] = {
+        ...mockPurchaseOrders[index],
+        status: 'DRAFT',
+        notes: reason ? `Rejected: ${reason}` : mockPurchaseOrders[index].notes,
+        updated_at: new Date().toISOString(),
+      };
+      result.success.push(id);
+    }
+  }
+
+  result.total_success = result.success.length;
+  result.total_failed = result.failed.length;
+
+  return result;
+}
+
+async function bulkDeletePurchaseOrders(ids: string[]): Promise<BulkActionResult> {
+  if (!MOCK_MODE) {
+    const response = await apiClient.post('/purchase-orders/bulk-delete/', { ids });
+    return response.data;
+  }
+
+  // Mock implementation
+  await delay(500);
+
+  const result: BulkActionResult = {
+    success: [],
+    failed: [],
+    total_processed: ids.length,
+    total_success: 0,
+    total_failed: 0,
+  };
+
+  for (const id of ids) {
+    const index = mockPurchaseOrders.findIndex(po => po.id === id);
+    if (index === -1) {
+      result.failed.push({ id, error: 'Purchase order not found' });
+    } else if (mockPurchaseOrders[index].status !== 'DRAFT') {
+      result.failed.push({ id, error: `Cannot delete PO in ${mockPurchaseOrders[index].status} status` });
+    } else {
+      mockPurchaseOrders.splice(index, 1);
+      result.success.push(id);
+    }
+  }
+
+  result.total_success = result.success.length;
+  result.total_failed = result.failed.length;
+
+  return result;
+}
+
+// Bulk Action Hooks
+export function useBulkApprovePurchaseOrders() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: bulkApprovePurchaseOrders,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] }),
+  });
+}
+
+export function useBulkRejectPurchaseOrders() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason: string }) =>
+      bulkRejectPurchaseOrders(ids, reason),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] }),
+  });
+}
+
+export function useBulkDeletePurchaseOrders() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: bulkDeletePurchaseOrders,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] }),
   });
 }

@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ClipboardList } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ export interface POLineItem {
   quantity: string;
   unit_of_measure: string;
   unit_price: string;
+  requisition_line_id?: string | null;
 }
 
 interface POLineItemsTableProps {
@@ -32,6 +33,7 @@ interface POLineItemsTableProps {
   readOnly?: boolean;
   showReceived?: boolean;
   receivedQuantities?: Record<string, string>;
+  showSourceBadges?: boolean;
 }
 
 const UNITS_OF_MEASURE = [
@@ -62,6 +64,7 @@ export default function POLineItemsTable({
   readOnly = false,
   showReceived = false,
   receivedQuantities = {},
+  showSourceBadges = false,
 }: POLineItemsTableProps) {
   const addItem = () => {
     const newItem: POLineItem = {
@@ -126,7 +129,15 @@ export default function POLineItemsTable({
               return (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium text-neutral-500">
-                    {index + 1}
+                    <div className="flex items-center gap-2">
+                      <span>{index + 1}</span>
+                      {showSourceBadges && item.requisition_line_id && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                          <ClipboardList className="h-3 w-3 mr-0.5" />
+                          REQ
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{item.description}</TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>

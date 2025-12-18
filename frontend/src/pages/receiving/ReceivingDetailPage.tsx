@@ -157,7 +157,7 @@ export default function ReceivingDetailPage() {
     );
   }
 
-  const statusConfig = GR_STATUS_CONFIG[goodsReceipt.status];
+  const statusConfig = GR_STATUS_CONFIG[goodsReceipt.status] || { label: goodsReceipt.status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
   const canEdit = goodsReceipt.status === 'DRAFT';
   const canConfirm = goodsReceipt.status === 'DRAFT';
   const canCancel = goodsReceipt.status !== 'CANCELLED';

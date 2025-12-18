@@ -17,6 +17,11 @@ import {
   MapPin,
   FileText,
   Printer,
+  Link2,
+  ClipboardList,
+  TrendingUp,
+  ArrowRight,
+  Clock,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -44,6 +49,7 @@ import {
 import { POForm, POLineItemsTable } from '@/components/purchase-orders';
 import { CommentsSection } from '@/components/ui/comments-section';
 import { AttachmentsSection } from '@/components/ui/attachments-section';
+import { ActivityTimeline } from '@/components/ui/activity-timeline';
 import {
   usePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -104,6 +110,44 @@ export default function PODetailPage() {
       acc[line.id] = line.quantity_received;
       return acc;
     }, {} as Record<string, string>);
+  }, [purchaseOrder?.lines]);
+
+  // Calculate receiving progress stats
+  const receivingStats = useMemo(() => {
+    if (!purchaseOrder?.lines || purchaseOrder.lines.length === 0) return null;
+
+    const totalLines = purchaseOrder.lines.length;
+    const fullyReceivedLines = purchaseOrder.lines.filter(
+      line => parseFloat(line.quantity_received) >= parseFloat(line.quantity)
+    ).length;
+    const partiallyReceivedLines = purchaseOrder.lines.filter(
+      line => parseFloat(line.quantity_received) > 0 && parseFloat(line.quantity_received) < parseFloat(line.quantity)
+    ).length;
+    const pendingLines = totalLines - fullyReceivedLines - partiallyReceivedLines;
+
+    const totalOrdered = purchaseOrder.lines.reduce(
+      (sum, line) => sum + parseFloat(line.quantity), 0
+    );
+    const totalReceived = purchaseOrder.lines.reduce(
+      (sum, line) => sum + parseFloat(line.quantity_received), 0
+    );
+
+    const receivingPercentage = totalOrdered > 0 ? Math.round((totalReceived / totalOrdered) * 100) : 0;
+
+    // Count lines from requisition
+    const linesFromReq = purchaseOrder.lines.filter(line => line.requisition_line_id).length;
+
+    return {
+      totalLines,
+      fullyReceivedLines,
+      partiallyReceivedLines,
+      pendingLines,
+      totalOrdered,
+      totalReceived,
+      receivingPercentage,
+      isFullyReceived: fullyReceivedLines === totalLines,
+      linesFromReq,
+    };
   }, [purchaseOrder?.lines]);
 
   const handleUpdate = async (data: POPayload) => {
@@ -217,7 +261,7 @@ export default function PODetailPage() {
     );
   }
 
-  const statusConfig = PO_STATUS_CONFIG[purchaseOrder.status];
+  const statusConfig = PO_STATUS_CONFIG[purchaseOrder.status] || { label: purchaseOrder.status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
   const canEdit = purchaseOrder.status === 'DRAFT';
   const canSubmit = purchaseOrder.status === 'DRAFT';
   const canApprove = purchaseOrder.status === 'PENDING_APPROVAL';
@@ -425,11 +469,13 @@ export default function PODetailPage() {
                       quantity: line.quantity,
                       unit_of_measure: line.unit_of_measure,
                       unit_price: line.unit_price,
+                      requisition_line_id: line.requisition_line_id,
                     }))}
                     onChange={() => {}}
                     readOnly
                     showReceived={canReceive || purchaseOrder.status === 'RECEIVED'}
                     receivedQuantities={receivedQuantities}
+                    showSourceBadges={!!purchaseOrder.requisition_id}
                   />
 
                   {/* Receive Items Button */}
@@ -513,6 +559,75 @@ export default function PODetailPage() {
             </CardContent>
           </Card>
 
+          {/* Receiving Progress Card - Premium Style */}
+          {receivingStats && purchaseOrder.lines && purchaseOrder.lines.length > 0 && (
+            <Card className="overflow-hidden border-emerald-100">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 border-b border-emerald-100">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
+                    <Package className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h3 className="font-semibold text-neutral-900">Receiving Progress</h3>
+                </div>
+              </div>
+              <CardContent className="pt-4">
+                {/* Progress Bar */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-neutral-600">
+                      {receivingStats.receivingPercentage}% Received
+                    </span>
+                    <span className="text-neutral-500">
+                      {receivingStats.totalReceived.toFixed(0)} / {receivingStats.totalOrdered.toFixed(0)} units
+                    </span>
+                  </div>
+                  <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        receivingStats.isFullyReceived
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                          : receivingStats.receivingPercentage > 0
+                          ? 'bg-gradient-to-r from-amber-400 to-orange-400'
+                          : 'bg-neutral-300'
+                      }`}
+                      style={{ width: `${receivingStats.receivingPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-100">
+                  <div className="text-center p-2 rounded-lg bg-emerald-50">
+                    <div className="text-lg font-bold text-emerald-700">
+                      {receivingStats.fullyReceivedLines}
+                    </div>
+                    <div className="text-xs text-emerald-600">Received</div>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-amber-50">
+                    <div className="text-lg font-bold text-amber-700">
+                      {receivingStats.partiallyReceivedLines}
+                    </div>
+                    <div className="text-xs text-amber-600">Partial</div>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-neutral-50">
+                    <div className="text-lg font-bold text-neutral-700">
+                      {receivingStats.pendingLines}
+                    </div>
+                    <div className="text-xs text-neutral-600">Pending</div>
+                  </div>
+                </div>
+
+                {/* Full completion badge */}
+                {receivingStats.isFullyReceived && (
+                  <div className="mt-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-100 text-emerald-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Fully Received</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Supplier Info */}
           <Card>
             <CardHeader>
@@ -525,6 +640,46 @@ export default function PODetailPage() {
               <p className="font-medium text-neutral-900">{purchaseOrder.supplier_name}</p>
             </CardContent>
           </Card>
+
+          {/* Source Requisition - Enhanced Premium Card */}
+          {purchaseOrder.requisition_number && (
+            <Card className="overflow-hidden border-blue-100">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-blue-100">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
+                    <ClipboardList className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold text-neutral-900">Source Requisition</h3>
+                </div>
+              </div>
+              <CardContent className="pt-4">
+                <button
+                  onClick={() => navigate(`/requisitions/${purchaseOrder.requisition_id}`)}
+                  className="group w-full text-left p-3 -mx-1 rounded-xl border border-transparent hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-200"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-blue-600 group-hover:text-blue-700">
+                      {purchaseOrder.requisition_number}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-neutral-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                  {purchaseOrder.requisition_title && (
+                    <p className="text-sm text-neutral-600 mb-2 line-clamp-2">
+                      {purchaseOrder.requisition_title}
+                    </p>
+                  )}
+                  {receivingStats && receivingStats.linesFromReq > 0 && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        <Link2 className="h-3 w-3 mr-1" />
+                        {receivingStats.linesFromReq} line{receivingStats.linesFromReq !== 1 ? 's' : ''} linked
+                      </span>
+                    </div>
+                  )}
+                </button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Dates */}
           <Card>
@@ -577,6 +732,18 @@ export default function PODetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Activity Timeline */}
+          <Card>
+            <CardContent className="pt-6">
+              <ActivityTimeline
+                contentType="purchase_orders.purchaseorder"
+                objectId={purchaseOrder.id}
+                maxItems={5}
+                compact
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
 

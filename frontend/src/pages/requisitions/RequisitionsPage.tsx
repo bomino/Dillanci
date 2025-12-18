@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -15,7 +15,9 @@ import {
   Send,
   Filter,
   Clock,
+  ShoppingCart,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,8 @@ import { StatusBadge } from '@/components/ui/badge';
 import {
   DataTable,
   DataTableColumnHeader,
+  createSelectColumn,
+  type RowSelectionState,
 } from '@/components/ui/data-table';
 import {
   Dialog,
@@ -35,6 +39,9 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExportButton } from '@/components/ui/export-button';
+import { BulkActionToolbar } from '@/components/ui/bulk-action-toolbar';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 import {
   useRequisitions,
@@ -42,6 +49,9 @@ import {
   useSubmitRequisition,
   useApproveRequisition,
   useCancelRequisition,
+  useBulkApproveRequisitions,
+  useBulkRejectRequisitions,
+  useBulkDeleteRequisitions,
   requisitionPriorityConfig,
   departmentOptions,
 } from '@/lib/api/requisitions';
@@ -59,11 +69,37 @@ export default function RequisitionsPage() {
   const [requisitionToDelete, setRequisitionToDelete] = useState<Requisition | null>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
 
+  // Row selection state for bulk actions
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [bulkRejectDialogOpen, setBulkRejectDialogOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+
   const { data, isLoading, isError } = useRequisitions(filters);
   const deleteMutation = useDeleteRequisition();
   const submitMutation = useSubmitRequisition();
   const approveMutation = useApproveRequisition();
   const cancelMutation = useCancelRequisition();
+
+  // Bulk action mutations
+  const bulkApproveMutation = useBulkApproveRequisitions();
+  const bulkRejectMutation = useBulkRejectRequisitions();
+  const bulkDeleteMutation = useBulkDeleteRequisitions();
+
+  // Get selected IDs from row selection state
+  const selectedIds = useMemo(() => Object.keys(rowSelection).filter(id => rowSelection[id]), [rowSelection]);
+  const selectedCount = selectedIds.length;
+
+  // Get selected requisitions for status-aware actions
+  const selectedRequisitions = useMemo(() => {
+    if (!data?.results) return [];
+    return data.results.filter(r => selectedIds.includes(r.id));
+  }, [data?.results, selectedIds]);
+
+  // Check what actions are available for selection
+  const canBulkApprove = selectedRequisitions.some(r => r.status === 'SUBMITTED');
+  const canBulkReject = selectedRequisitions.some(r => r.status === 'SUBMITTED');
+  const canBulkDelete = selectedRequisitions.some(r => r.status === 'DRAFT');
 
   // Handle search with debounce effect
   const handleSearch = (value: string) => {
@@ -121,9 +157,114 @@ export default function RequisitionsPage() {
     setActionMenuOpen(null);
   };
 
+  // Clear selection helper
+  const clearSelection = () => setRowSelection({});
+
+  // Handle bulk approve
+  const handleBulkApprove = async () => {
+    const approvableIds = selectedRequisitions
+      .filter(r => r.status === 'SUBMITTED')
+      .map(r => r.id);
+
+    if (approvableIds.length === 0) {
+      toast.error('No requisitions can be approved. Select SUBMITTED requisitions.');
+      return;
+    }
+
+    const result = await bulkApproveMutation.mutateAsync(approvableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully approved ${result.total_success} requisition(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to approve ${result.total_failed} requisition(s)`);
+    }
+
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk reject - opens dialog for reason
+  const handleBulkRejectClick = () => {
+    const rejectableIds = selectedRequisitions
+      .filter(r => r.status === 'SUBMITTED')
+      .map(r => r.id);
+
+    if (rejectableIds.length === 0) {
+      toast.error('No requisitions can be rejected. Select SUBMITTED requisitions.');
+      return;
+    }
+
+    setBulkRejectDialogOpen(true);
+  };
+
+  const handleBulkRejectConfirm = async () => {
+    const rejectableIds = selectedRequisitions
+      .filter(r => r.status === 'SUBMITTED')
+      .map(r => r.id);
+
+    const result = await bulkRejectMutation.mutateAsync({
+      ids: rejectableIds,
+      reason: bulkRejectReason
+    });
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully rejected ${result.total_success} requisition(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to reject ${result.total_failed} requisition(s)`);
+    }
+
+    setBulkRejectDialogOpen(false);
+    setBulkRejectReason('');
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk delete - opens confirmation dialog
+  const handleBulkDeleteClick = () => {
+    const deletableIds = selectedRequisitions
+      .filter(r => r.status === 'DRAFT')
+      .map(r => r.id);
+
+    if (deletableIds.length === 0) {
+      toast.error('No requisitions can be deleted. Select DRAFT requisitions.');
+      return;
+    }
+
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const deletableIds = selectedRequisitions
+      .filter(r => r.status === 'DRAFT')
+      .map(r => r.id);
+
+    const result = await bulkDeleteMutation.mutateAsync(deletableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully deleted ${result.total_success} requisition(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to delete ${result.total_failed} requisition(s)`);
+    }
+
+    setBulkDeleteDialogOpen(false);
+    clearSelection();
+    return result;
+  };
+
   // Get priority badge styling
-  const getPriorityBadge = (priority: Requisition['priority']) => {
-    const config = requisitionPriorityConfig[priority];
+  const getPriorityBadge = (priority: Requisition['priority'] | undefined | null) => {
+    const defaultConfig = { label: 'Unknown', color: 'default' as const };
+    if (!priority) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-700">
+          {defaultConfig.label}
+        </span>
+      );
+    }
+    const config = requisitionPriorityConfig[priority] || { label: priority, color: 'default' as const };
     const colorClasses = {
       default: 'bg-neutral-100 text-neutral-700',
       info: 'bg-blue-100 text-blue-700',
@@ -132,14 +273,15 @@ export default function RequisitionsPage() {
       success: 'bg-emerald-100 text-emerald-700',
     };
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClasses[config.color]}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClasses[config.color] || colorClasses.default}`}>
         {config.label}
       </span>
     );
   };
 
-  // Column definitions
+  // Column definitions with selection column
   const columns: ColumnDef<Requisition>[] = [
+    createSelectColumn<Requisition>(),
     {
       accessorKey: 'number',
       header: ({ column }) => (
@@ -203,6 +345,24 @@ export default function RequisitionsPage() {
       ),
     },
     {
+      id: 'po_count',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="POs" />
+      ),
+      cell: ({ row }) => {
+        const poCount = row.original.purchase_orders?.length || 0;
+        if (poCount === 0) {
+          return <span className="text-neutral-400">-</span>;
+        }
+        return (
+          <div className="flex items-center gap-1.5">
+            <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="text-sm font-medium text-emerald-700">{poCount}</span>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'required_date',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Required By" />
@@ -252,7 +412,34 @@ export default function RequisitionsPage() {
                 className="fixed inset-0 z-40"
                 onClick={() => setActionMenuOpen(null)}
               />
-              <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
+              <div
+                className="fixed z-50 w-48 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg max-h-64 overflow-y-auto"
+                ref={(el) => {
+                  if (el) {
+                    // Get the button's position
+                    const button = el.parentElement?.querySelector('button');
+                    if (button) {
+                      const buttonRect = button.getBoundingClientRect();
+                      const viewportHeight = window.innerHeight;
+                      const dropdownHeight = el.offsetHeight;
+
+                      // Position to the left of button, aligned with button
+                      el.style.right = `${window.innerWidth - buttonRect.right}px`;
+
+                      // Check if dropdown would overflow below viewport
+                      if (buttonRect.bottom + dropdownHeight + 8 > viewportHeight) {
+                        // Position above the button
+                        el.style.bottom = `${viewportHeight - buttonRect.top + 4}px`;
+                        el.style.top = 'auto';
+                      } else {
+                        // Position below the button
+                        el.style.top = `${buttonRect.bottom + 4}px`;
+                        el.style.bottom = 'auto';
+                      }
+                    }
+                  }
+                }}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -493,6 +680,7 @@ export default function RequisitionsPage() {
                 { key: 'required_date', header: 'Required By', formatter: (v) => v ? formatDate(String(v)) : '-' },
                 { key: 'created_at', header: 'Created', formatter: (v) => v ? formatDate(String(v)) : '-' },
               ]}
+              serverExportUrl="/requisitions/export/"
             />
           </div>
 
@@ -514,6 +702,9 @@ export default function RequisitionsPage() {
             showPagination={true}
             onRowClick={handleRowClick}
             getRowId={(row) => row.id}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            enableRowSelection={true}
             emptyState={{
               title: 'No requisitions found',
               description: filters.search || filters.status
@@ -560,6 +751,88 @@ export default function RequisitionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Reject Dialog */}
+      <Dialog open={bulkRejectDialogOpen} onOpenChange={setBulkRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Requisitions</DialogTitle>
+            <DialogDescription>
+              You are about to reject {selectedRequisitions.filter(r => r.status === 'SUBMITTED').length} requisition(s).
+              Please provide a reason for rejection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="bulk-reject-reason">Reason for Rejection</Label>
+            <Textarea
+              id="bulk-reject-reason"
+              value={bulkRejectReason}
+              onChange={(e) => setBulkRejectReason(e.target.value)}
+              placeholder="Enter reason for rejecting these requisitions..."
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkRejectDialogOpen(false);
+                setBulkRejectReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkRejectConfirm}
+              disabled={bulkRejectMutation.isPending || !bulkRejectReason.trim()}
+            >
+              {bulkRejectMutation.isPending ? 'Rejecting...' : 'Reject All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Requisitions</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedRequisitions.filter(r => r.status === 'DRAFT').length} draft requisition(s)?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedCount}
+        onClearSelection={clearSelection}
+        onApprove={canBulkApprove ? handleBulkApprove : undefined}
+        onReject={canBulkReject ? handleBulkRejectClick : undefined}
+        onDelete={canBulkDelete ? handleBulkDeleteClick : undefined}
+        approveLabel="Approve"
+        rejectLabel="Reject"
+        deleteLabel="Delete"
+      />
     </motion.div>
   );
 }

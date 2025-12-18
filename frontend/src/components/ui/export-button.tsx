@@ -1,13 +1,15 @@
 import * as React from 'react';
-import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Loader2, Database } from 'lucide-react';
 import { Button } from './button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './dropdown-menu';
 import { cn } from '@/lib/utils';
+import apiClient from '@/lib/api/client';
 
 export interface ExportColumn {
   key: string;
@@ -21,6 +23,8 @@ export interface ExportButtonProps {
   columns: ExportColumn[];
   className?: string;
   disabled?: boolean;
+  /** Server-side export URL (e.g., '/api/v1/requisitions/export/') - enables full dataset export */
+  serverExportUrl?: string;
 }
 
 function formatValue(value: unknown): string {
@@ -193,9 +197,10 @@ export function ExportButton({
   columns,
   className,
   disabled = false,
+  serverExportUrl,
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = React.useState(false);
-  const [exportType, setExportType] = React.useState<'csv' | 'pdf' | null>(null);
+  const [exportType, setExportType] = React.useState<'csv' | 'pdf' | 'excel' | 'server-excel' | 'server-csv' | null>(null);
 
   const handleExport = async (type: 'csv' | 'pdf') => {
     setIsExporting(true);
@@ -215,7 +220,53 @@ export function ExportButton({
     }
   };
 
-  const isDisabled = disabled || data.length === 0;
+  const handleServerExport = async (format: 'excel' | 'csv') => {
+    if (!serverExportUrl) return;
+
+    setIsExporting(true);
+    setExportType(format === 'excel' ? 'server-excel' : 'server-csv');
+
+    try {
+      const response = await apiClient.get(serverExportUrl, {
+        params: { format },
+        responseType: 'blob',
+      });
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let downloadFilename = `${filename}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (filenameMatch) {
+          downloadFilename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = new Blob([response.data], {
+        type: format === 'excel'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv;charset=utf-8;',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', downloadFilename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Server export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  const isDisabled = disabled || (data.length === 0 && !serverExportUrl);
 
   return (
     <DropdownMenu>
@@ -235,22 +286,50 @@ export function ExportButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={() => handleExport('csv')}
-          disabled={isExporting}
-          className="cursor-pointer"
-        >
-          <FileSpreadsheet className="mr-2 h-4 w-4" />
-          {isExporting && exportType === 'csv' ? 'Exporting...' : 'Export to CSV'}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => handleExport('pdf')}
-          disabled={isExporting}
-          className="cursor-pointer"
-        >
-          <FileText className="mr-2 h-4 w-4" />
-          {isExporting && exportType === 'pdf' ? 'Exporting...' : 'Export to PDF'}
-        </DropdownMenuItem>
+        {/* Current page exports */}
+        {data.length > 0 && (
+          <>
+            <DropdownMenuItem
+              onClick={() => handleExport('csv')}
+              disabled={isExporting}
+              className="cursor-pointer"
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              {isExporting && exportType === 'csv' ? 'Exporting...' : 'Current Page to CSV'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport('pdf')}
+              disabled={isExporting}
+              className="cursor-pointer"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {isExporting && exportType === 'pdf' ? 'Exporting...' : 'Current Page to PDF'}
+            </DropdownMenuItem>
+          </>
+        )}
+
+        {/* Server-side exports (full dataset) */}
+        {serverExportUrl && (
+          <>
+            {data.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              onClick={() => handleServerExport('excel')}
+              disabled={isExporting}
+              className="cursor-pointer"
+            >
+              <Database className="mr-2 h-4 w-4" />
+              {isExporting && exportType === 'server-excel' ? 'Exporting...' : 'All Data to Excel'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleServerExport('csv')}
+              disabled={isExporting}
+              className="cursor-pointer"
+            >
+              <Database className="mr-2 h-4 w-4" />
+              {isExporting && exportType === 'server-csv' ? 'Exporting...' : 'All Data to CSV'}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

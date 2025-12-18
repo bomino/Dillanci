@@ -203,8 +203,8 @@ export default function ContractDetailPage() {
     );
   }
 
-  const statusConfig = CONTRACT_STATUS_CONFIG[contract.status];
-  const typeConfig = CONTRACT_TYPE_CONFIG[contract.contract_type];
+  const statusConfig = CONTRACT_STATUS_CONFIG[contract.status] || { label: contract.status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
+  const typeConfig = CONTRACT_TYPE_CONFIG[contract.contract_type] || { label: contract.contract_type || 'Unknown', description: '' };
   const canEdit = ['DRAFT', 'PENDING_APPROVAL'].includes(contract.status);
   const canSubmit = contract.status === 'DRAFT';
   const canApprove = contract.status === 'PENDING_APPROVAL';

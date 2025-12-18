@@ -17,18 +17,23 @@ import {
   DollarSign,
   Clock,
 } from 'lucide-react';
-import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import type { ColumnDef, SortingState, RowSelectionState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
   getSortedRowModel,
 } from '@tanstack/react-table';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExportButton } from '@/components/ui/export-button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkActionToolbar } from '@/components/ui/bulk-action-toolbar';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +66,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 import type { Invoice, InvoiceStatus, MatchStatus } from '@/types';
 import {
@@ -70,6 +83,9 @@ import {
   useApproveInvoice,
   usePayInvoice,
   useCancelInvoice,
+  useBulkApproveInvoices,
+  useBulkRejectInvoices,
+  useBulkDeleteInvoices,
   INVOICE_STATUS_CONFIG,
   MATCH_STATUS_CONFIG,
   type InvoiceApiFilters,
@@ -106,6 +122,12 @@ export default function InvoicesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
 
+  // Row selection state for bulk actions
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [bulkRejectDialogOpen, setBulkRejectDialogOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+
   const filters: InvoiceApiFilters = useMemo(
     () => ({
       search: search || undefined,
@@ -121,6 +143,26 @@ export default function InvoicesPage() {
   const approveMutation = useApproveInvoice();
   const payMutation = usePayInvoice();
   const cancelMutation = useCancelInvoice();
+
+  // Bulk action mutations
+  const bulkApproveMutation = useBulkApproveInvoices();
+  const bulkRejectMutation = useBulkRejectInvoices();
+  const bulkDeleteMutation = useBulkDeleteInvoices();
+
+  // Get selected IDs from row selection state
+  const selectedIds = useMemo(() => Object.keys(rowSelection).filter(id => rowSelection[id]), [rowSelection]);
+  const selectedCount = selectedIds.length;
+
+  // Get selected invoices for status-aware actions
+  const selectedInvoices = useMemo(() => {
+    return invoices.filter(inv => selectedIds.includes(inv.id));
+  }, [invoices, selectedIds]);
+
+  // Check what actions are available for selection
+  const approvableStatuses: InvoiceStatus[] = ['MATCHED', 'PARTIALLY_MATCHED', 'VALIDATED'];
+  const canBulkApprove = selectedInvoices.some(inv => approvableStatuses.includes(inv.status));
+  const canBulkReject = selectedInvoices.some(inv => inv.status === 'VALIDATED');
+  const canBulkDelete = selectedInvoices.some(inv => inv.status === 'DRAFT');
 
   const handleDelete = async () => {
     if (!invoiceToDelete) return;
@@ -165,6 +207,103 @@ export default function InvoicesPage() {
     }
   };
 
+  // Clear selection helper
+  const clearSelection = () => setRowSelection({});
+
+  // Handle bulk approve
+  const handleBulkApprove = async () => {
+    const approvableIds = selectedInvoices
+      .filter(inv => approvableStatuses.includes(inv.status))
+      .map(inv => inv.id);
+
+    if (approvableIds.length === 0) {
+      toast.error('No invoices can be approved. Select MATCHED, PARTIALLY_MATCHED, or VALIDATED invoices.');
+      return;
+    }
+
+    const result = await bulkApproveMutation.mutateAsync(approvableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully approved ${result.total_success} invoice(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to approve ${result.total_failed} invoice(s)`);
+    }
+
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk reject - opens dialog for reason
+  const handleBulkRejectClick = () => {
+    const rejectableIds = selectedInvoices
+      .filter(inv => inv.status === 'VALIDATED')
+      .map(inv => inv.id);
+
+    if (rejectableIds.length === 0) {
+      toast.error('No invoices can be rejected. Select VALIDATED invoices.');
+      return;
+    }
+
+    setBulkRejectDialogOpen(true);
+  };
+
+  const handleBulkRejectConfirm = async () => {
+    const rejectableIds = selectedInvoices
+      .filter(inv => inv.status === 'VALIDATED')
+      .map(inv => inv.id);
+
+    const result = await bulkRejectMutation.mutateAsync({
+      ids: rejectableIds,
+      reason: bulkRejectReason
+    });
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully rejected ${result.total_success} invoice(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to reject ${result.total_failed} invoice(s)`);
+    }
+
+    setBulkRejectDialogOpen(false);
+    setBulkRejectReason('');
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk delete - opens confirmation dialog
+  const handleBulkDeleteClick = () => {
+    const deletableIds = selectedInvoices
+      .filter(inv => inv.status === 'DRAFT')
+      .map(inv => inv.id);
+
+    if (deletableIds.length === 0) {
+      toast.error('No invoices can be deleted. Select DRAFT invoices.');
+      return;
+    }
+
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const deletableIds = selectedInvoices
+      .filter(inv => inv.status === 'DRAFT')
+      .map(inv => inv.id);
+
+    const result = await bulkDeleteMutation.mutateAsync(deletableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully deleted ${result.total_success} invoice(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to delete ${result.total_failed} invoice(s)`);
+    }
+
+    setBulkDeleteDialogOpen(false);
+    clearSelection();
+    return result;
+  };
+
   // Calculate summary stats
   const stats = useMemo(() => {
     const all = invoices;
@@ -185,6 +324,31 @@ export default function InvoicesPage() {
   }, [invoices]);
 
   const columns: ColumnDef<Invoice>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          indeterminate={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     {
       accessorKey: 'number',
       header: 'Invoice #',
@@ -216,7 +380,7 @@ export default function InvoicesPage() {
       header: 'Status',
       cell: ({ row }) => {
         const status = row.getValue('status') as InvoiceStatus;
-        const config = INVOICE_STATUS_CONFIG[status];
+        const config = INVOICE_STATUS_CONFIG[status] || { label: status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}
@@ -231,7 +395,7 @@ export default function InvoicesPage() {
       header: 'Match',
       cell: ({ row }) => {
         const matchStatus = row.getValue('match_status') as MatchStatus;
-        const config = MATCH_STATUS_CONFIG[matchStatus];
+        const config = MATCH_STATUS_CONFIG[matchStatus] || { label: matchStatus || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}
@@ -358,8 +522,11 @@ export default function InvoicesPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
     state: {
       sorting,
+      rowSelection,
     },
   });
 
@@ -494,6 +661,7 @@ export default function InvoicesPage() {
                 { key: 'invoice_date', header: 'Invoice Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
                 { key: 'due_date', header: 'Due Date', formatter: (v) => v ? formatDate(String(v)) : '-' },
               ]}
+              serverExportUrl="/invoices/export/"
             />
           </div>
         </CardContent>
@@ -576,6 +744,88 @@ export default function InvoicesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Reject Dialog */}
+      <Dialog open={bulkRejectDialogOpen} onOpenChange={setBulkRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Invoices</DialogTitle>
+            <DialogDescription>
+              You are about to reject {selectedInvoices.filter(inv => inv.status === 'VALIDATED').length} invoice(s).
+              Please provide a reason for rejection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="bulk-reject-reason">Reason for Rejection</Label>
+            <Textarea
+              id="bulk-reject-reason"
+              value={bulkRejectReason}
+              onChange={(e) => setBulkRejectReason(e.target.value)}
+              placeholder="Enter reason for rejecting these invoices..."
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkRejectDialogOpen(false);
+                setBulkRejectReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkRejectConfirm}
+              disabled={bulkRejectMutation.isPending || !bulkRejectReason.trim()}
+            >
+              {bulkRejectMutation.isPending ? 'Rejecting...' : 'Reject All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Invoices</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedInvoices.filter(inv => inv.status === 'DRAFT').length} draft invoice(s)?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedCount}
+        onClearSelection={clearSelection}
+        onApprove={canBulkApprove ? handleBulkApprove : undefined}
+        onReject={canBulkReject ? handleBulkRejectClick : undefined}
+        onDelete={canBulkDelete ? handleBulkDeleteClick : undefined}
+        approveLabel="Approve"
+        rejectLabel="Reject"
+        deleteLabel="Delete"
+      />
     </motion.div>
   );
 }

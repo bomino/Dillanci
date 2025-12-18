@@ -168,7 +168,7 @@ export default function ReceivingPage() {
       header: 'Status',
       cell: ({ row }) => {
         const status = row.getValue('status') as GoodsReceiptStatus;
-        const config = GR_STATUS_CONFIG[status];
+        const config = GR_STATUS_CONFIG[status] || { label: status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}

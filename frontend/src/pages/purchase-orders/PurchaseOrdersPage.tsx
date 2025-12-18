@@ -15,19 +15,25 @@ import {
   XCircle,
   Package,
   Truck,
+  ClipboardList,
 } from 'lucide-react';
-import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import type { ColumnDef, SortingState, RowSelectionState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
   getSortedRowModel,
 } from '@tanstack/react-table';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExportButton } from '@/components/ui/export-button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkActionToolbar } from '@/components/ui/bulk-action-toolbar';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +66,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 import type { PurchaseOrder, POStatus } from '@/types';
 import {
@@ -70,6 +84,9 @@ import {
   useRejectPurchaseOrder,
   useSendPurchaseOrder,
   useCancelPurchaseOrder,
+  useBulkApprovePurchaseOrders,
+  useBulkRejectPurchaseOrders,
+  useBulkDeletePurchaseOrders,
   PO_STATUS_CONFIG,
   type POFilters,
 } from '@/lib/api/purchase-orders';
@@ -107,6 +124,12 @@ export default function PurchaseOrdersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [poToDelete, setPOToDelete] = useState<PurchaseOrder | null>(null);
 
+  // Row selection state for bulk actions
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [bulkRejectDialogOpen, setBulkRejectDialogOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+
   const filters: POFilters = useMemo(
     () => ({
       search: search || undefined,
@@ -122,6 +145,25 @@ export default function PurchaseOrdersPage() {
   const rejectMutation = useRejectPurchaseOrder();
   const sendMutation = useSendPurchaseOrder();
   const cancelMutation = useCancelPurchaseOrder();
+
+  // Bulk action mutations
+  const bulkApproveMutation = useBulkApprovePurchaseOrders();
+  const bulkRejectMutation = useBulkRejectPurchaseOrders();
+  const bulkDeleteMutation = useBulkDeletePurchaseOrders();
+
+  // Get selected IDs from row selection state
+  const selectedIds = useMemo(() => Object.keys(rowSelection).filter(id => rowSelection[id]), [rowSelection]);
+  const selectedCount = selectedIds.length;
+
+  // Get selected POs for status-aware actions
+  const selectedPOs = useMemo(() => {
+    return purchaseOrders.filter(po => selectedIds.includes(po.id));
+  }, [purchaseOrders, selectedIds]);
+
+  // Check what actions are available for selection
+  const canBulkApprove = selectedPOs.some(po => po.status === 'PENDING_APPROVAL');
+  const canBulkReject = selectedPOs.some(po => po.status === 'PENDING_APPROVAL');
+  const canBulkDelete = selectedPOs.some(po => po.status === 'DRAFT');
 
   const handleDelete = async () => {
     if (!poToDelete) return;
@@ -174,6 +216,103 @@ export default function PurchaseOrdersPage() {
     }
   };
 
+  // Clear selection helper
+  const clearSelection = () => setRowSelection({});
+
+  // Handle bulk approve
+  const handleBulkApprove = async () => {
+    const approvableIds = selectedPOs
+      .filter(po => po.status === 'PENDING_APPROVAL')
+      .map(po => po.id);
+
+    if (approvableIds.length === 0) {
+      toast.error('No POs can be approved. Select PENDING_APPROVAL POs.');
+      return;
+    }
+
+    const result = await bulkApproveMutation.mutateAsync(approvableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully approved ${result.total_success} purchase order(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to approve ${result.total_failed} purchase order(s)`);
+    }
+
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk reject - opens dialog for reason
+  const handleBulkRejectClick = () => {
+    const rejectableIds = selectedPOs
+      .filter(po => po.status === 'PENDING_APPROVAL')
+      .map(po => po.id);
+
+    if (rejectableIds.length === 0) {
+      toast.error('No POs can be rejected. Select PENDING_APPROVAL POs.');
+      return;
+    }
+
+    setBulkRejectDialogOpen(true);
+  };
+
+  const handleBulkRejectConfirm = async () => {
+    const rejectableIds = selectedPOs
+      .filter(po => po.status === 'PENDING_APPROVAL')
+      .map(po => po.id);
+
+    const result = await bulkRejectMutation.mutateAsync({
+      ids: rejectableIds,
+      reason: bulkRejectReason
+    });
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully rejected ${result.total_success} purchase order(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to reject ${result.total_failed} purchase order(s)`);
+    }
+
+    setBulkRejectDialogOpen(false);
+    setBulkRejectReason('');
+    clearSelection();
+    return result;
+  };
+
+  // Handle bulk delete - opens confirmation dialog
+  const handleBulkDeleteClick = () => {
+    const deletableIds = selectedPOs
+      .filter(po => po.status === 'DRAFT')
+      .map(po => po.id);
+
+    if (deletableIds.length === 0) {
+      toast.error('No POs can be deleted. Select DRAFT POs.');
+      return;
+    }
+
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const deletableIds = selectedPOs
+      .filter(po => po.status === 'DRAFT')
+      .map(po => po.id);
+
+    const result = await bulkDeleteMutation.mutateAsync(deletableIds);
+
+    if (result.total_success > 0) {
+      toast.success(`Successfully deleted ${result.total_success} purchase order(s)`);
+    }
+    if (result.total_failed > 0) {
+      toast.error(`Failed to delete ${result.total_failed} purchase order(s)`);
+    }
+
+    setBulkDeleteDialogOpen(false);
+    clearSelection();
+    return result;
+  };
+
   // Calculate summary stats
   const stats = useMemo(() => {
     const all = purchaseOrders;
@@ -188,6 +327,31 @@ export default function PurchaseOrdersPage() {
   }, [purchaseOrders]);
 
   const columns: ColumnDef<PurchaseOrder>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          indeterminate={table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     {
       accessorKey: 'number',
       header: 'PO Number',
@@ -208,11 +372,33 @@ export default function PurchaseOrdersPage() {
       ),
     },
     {
+      id: 'source_requisition',
+      header: 'Source Req',
+      cell: ({ row }) => {
+        const po = row.original;
+        if (!po.requisition_number) {
+          return <span className="text-neutral-400">-</span>;
+        }
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/requisitions/${po.requisition_id}`);
+            }}
+            className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            {po.requisition_number}
+          </button>
+        );
+      },
+    },
+    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
         const status = row.getValue('status') as POStatus;
-        const config = PO_STATUS_CONFIG[status];
+        const config = PO_STATUS_CONFIG[status] || { label: status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
         return (
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}
@@ -375,8 +561,11 @@ export default function PurchaseOrdersPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
     state: {
       sorting,
+      rowSelection,
     },
   });
 
@@ -488,6 +677,7 @@ export default function PurchaseOrdersPage() {
                 { key: 'expected_delivery', header: 'Expected Delivery', formatter: (v) => v ? formatDate(String(v)) : '-' },
                 { key: 'created_at', header: 'Created', formatter: (v) => v ? formatDate(String(v)) : '-' },
               ]}
+              serverExportUrl="/purchase-orders/export/"
             />
           </div>
         </CardContent>
@@ -570,6 +760,88 @@ export default function PurchaseOrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Reject Dialog */}
+      <Dialog open={bulkRejectDialogOpen} onOpenChange={setBulkRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Purchase Orders</DialogTitle>
+            <DialogDescription>
+              You are about to reject {selectedPOs.filter(po => po.status === 'PENDING_APPROVAL').length} purchase order(s).
+              Please provide a reason for rejection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="bulk-reject-reason">Reason for Rejection</Label>
+            <Textarea
+              id="bulk-reject-reason"
+              value={bulkRejectReason}
+              onChange={(e) => setBulkRejectReason(e.target.value)}
+              placeholder="Enter reason for rejecting these purchase orders..."
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkRejectDialogOpen(false);
+                setBulkRejectReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkRejectConfirm}
+              disabled={bulkRejectMutation.isPending || !bulkRejectReason.trim()}
+            >
+              {bulkRejectMutation.isPending ? 'Rejecting...' : 'Reject All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Purchase Orders</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedPOs.filter(po => po.status === 'DRAFT').length} draft purchase order(s)?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedCount}
+        onClearSelection={clearSelection}
+        onApprove={canBulkApprove ? handleBulkApprove : undefined}
+        onReject={canBulkReject ? handleBulkRejectClick : undefined}
+        onDelete={canBulkDelete ? handleBulkDeleteClick : undefined}
+        approveLabel="Approve"
+        rejectLabel="Reject"
+        deleteLabel="Delete"
+      />
     </motion.div>
   );
 }

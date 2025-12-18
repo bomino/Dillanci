@@ -96,6 +96,16 @@ class PurchaseOrder(SoftDeleteModel):
     )
     rejection_reason = models.CharField(max_length=1000, blank=True)
 
+    # Optional link to Requisition
+    requisition = models.ForeignKey(
+        'requisitions.Requisition',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_orders',
+        help_text='Source requisition this PO was created from',
+    )
+
     # Optional links to RFQ/Bid
     rfq = models.ForeignKey(
         'rfqs.RFQ',
@@ -288,6 +298,51 @@ class PurchaseOrder(SoftDeleteModel):
 
         return po
 
+    @classmethod
+    def create_from_requisition(cls, requisition, supplier, created_by):
+        """
+        Create a PO from an approved requisition.
+
+        Copies requisition line items to PO lines.
+
+        Args:
+            requisition: The approved requisition to convert
+            supplier: The supplier for the PO
+            created_by: User creating the PO
+
+        Returns:
+            PurchaseOrder: The created purchase order
+
+        Raises:
+            ValueError: If requisition is not approved
+        """
+        if requisition.status != 'APPROVED':
+            raise ValueError('Can only create PO from approved requisition')
+
+        po = cls.objects.create(
+            organization=requisition.organization,
+            created_by=created_by,
+            supplier=supplier,
+            budget_line=requisition.budget_line,
+            title=f'PO from {requisition.title}',
+            requisition=requisition,
+            description=requisition.description,
+        )
+
+        # Copy requisition lines to PO lines
+        for req_line in requisition.lines.all():
+            POLine.objects.create(
+                purchase_order=po,
+                description=req_line.description,
+                quantity=req_line.quantity,
+                unit_price=req_line.unit_price,
+                unit_of_measure=req_line.unit_of_measure,
+                catalog_item=req_line.catalog_item,
+                requisition_line=req_line,
+            )
+
+        return po
+
 
 class POLine(SoftDeleteModel):
     """Line item in a Purchase Order."""
@@ -310,6 +365,14 @@ class POLine(SoftDeleteModel):
         null=True,
         blank=True,
         related_name='po_lines',
+    )
+    requisition_line = models.ForeignKey(
+        'requisitions.RequisitionLine',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='po_lines',
+        help_text='Source requisition line this PO line was created from',
     )
     rfq_line = models.ForeignKey(
         'rfqs.RFQLine',

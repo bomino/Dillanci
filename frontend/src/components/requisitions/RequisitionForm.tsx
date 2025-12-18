@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FileText } from 'lucide-react';
+import { FileText, LayoutTemplate, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,9 @@ import {
 import { FieldWrapper as FormField } from '@/components/ui/form-field';
 
 import LineItemsTable, { type LineItem } from './LineItemsTable';
+import TemplateSelector from './TemplateSelector';
+import SaveAsTemplateDialog from './SaveAsTemplateDialog';
+import type { RequisitionTemplate } from '@/lib/api/requisition-templates';
 import {
   departmentOptions,
   requisitionPriorityConfig,
@@ -55,6 +59,8 @@ export default function RequisitionForm({
 }: RequisitionFormProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({});
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
 
   const {
     register,
@@ -104,6 +110,35 @@ export default function RequisitionForm({
 
   const priority = watch('priority');
   const department = watch('department');
+  const title = watch('title');
+  const currency = watch('currency');
+
+  // Handle template selection
+  const handleTemplateSelect = (template: RequisitionTemplate) => {
+    // Update form values
+    setValue('department', template.department);
+    setValue('priority', template.priority);
+    setValue('currency', template.currency);
+
+    // Update line items
+    setLineItems(
+      template.lines.map((line, index) => ({
+        id: `template-${Date.now()}-${index}`,
+        description: line.description,
+        quantity: line.quantity,
+        unit_of_measure: line.unit_of_measure,
+        estimated_unit_price: line.estimated_unit_price || '',
+        notes: line.notes || '',
+      }))
+    );
+
+    // Clear any line errors
+    setLineErrors({});
+
+    toast.success(`Template "${template.name}" applied`, {
+      description: `${template.lines.length} line items added`,
+    });
+  };
 
   // Validate line items
   const validateLineItems = (): boolean => {
@@ -174,14 +209,28 @@ export default function RequisitionForm({
       {/* Basic Information */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100">
-              <FileText className="h-5 w-5 text-primary-700" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100">
+                <FileText className="h-5 w-5 text-primary-700" />
+              </div>
+              <div>
+                <CardTitle>Requisition Details</CardTitle>
+                <CardDescription>Basic information about this request</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>Requisition Details</CardTitle>
-              <CardDescription>Basic information about this request</CardDescription>
-            </div>
+            {mode === 'create' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTemplateSelectorOpen(true)}
+                className="gap-2"
+              >
+                <LayoutTemplate className="h-4 w-4" />
+                Use Template
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -285,14 +334,28 @@ export default function RequisitionForm({
 
       {/* Form Actions */}
       <div className="flex items-center justify-between pt-4 border-t">
-        <div className="text-sm text-neutral-500">
-          Estimated Total:{' '}
-          <span className="text-lg font-semibold text-neutral-900">
-            {new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: watch('currency') || 'USD',
-            }).format(calculateTotal())}
-          </span>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-neutral-500">
+            Estimated Total:{' '}
+            <span className="text-lg font-semibold text-neutral-900">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency || 'USD',
+              }).format(calculateTotal())}
+            </span>
+          </div>
+          {lineItems.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSaveTemplateOpen(true)}
+              className="gap-2 text-neutral-600 hover:text-primary-600"
+            >
+              <Save className="h-4 w-4" />
+              Save as Template
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -309,6 +372,25 @@ export default function RequisitionForm({
           </Button>
         </div>
       </div>
+
+      {/* Template Selector Dialog */}
+      <TemplateSelector
+        open={templateSelectorOpen}
+        onOpenChange={setTemplateSelectorOpen}
+        onSelectTemplate={handleTemplateSelect}
+      />
+
+      {/* Save as Template Dialog */}
+      <SaveAsTemplateDialog
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+        department={department || 'OTHER'}
+        priority={(priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT') || 'MEDIUM'}
+        currency={currency || 'USD'}
+        lineItems={lineItems}
+        requisitionTitle={title}
+        onSuccess={() => toast.success('Template saved successfully')}
+      />
     </form>
   );
 }

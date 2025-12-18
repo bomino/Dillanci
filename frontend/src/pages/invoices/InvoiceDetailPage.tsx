@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Calendar,
   Building2,
-  User,
   Printer,
   ShoppingCart,
   Send,
@@ -45,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { InvoiceForm, ThreeWayMatch } from '@/components/invoices';
 import { CommentsSection } from '@/components/ui/comments-section';
 import { AttachmentsSection } from '@/components/ui/attachments-section';
+import { ActivityTimeline } from '@/components/ui/activity-timeline';
 import {
   useInvoice,
   useUpdateInvoice,
@@ -228,8 +228,8 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const statusConfig = INVOICE_STATUS_CONFIG[invoice.status];
-  const matchConfig = MATCH_STATUS_CONFIG[invoice.match_status];
+  const statusConfig = INVOICE_STATUS_CONFIG[invoice.status] || { label: invoice.status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
+  const matchConfig = MATCH_STATUS_CONFIG[invoice.match_status] || { label: invoice.match_status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
   const canEdit = invoice.status === 'DRAFT';
   const canSubmit = invoice.status === 'DRAFT';
   const canValidate = invoice.status === 'PENDING_VALIDATION';
@@ -505,7 +505,7 @@ export default function InvoiceDetailPage() {
                     </TableHeader>
                     <TableBody>
                       {invoice.lines.map((line, index) => {
-                        const lineMatchConfig = MATCH_STATUS_CONFIG[line.match_status];
+                        const lineMatchConfig = MATCH_STATUS_CONFIG[line.match_status] || { label: line.match_status || 'Unknown', color: 'text-neutral-700', bgColor: 'bg-neutral-100' };
                         return (
                           <TableRow key={line.id}>
                             <TableCell className="font-medium text-neutral-500">
@@ -678,23 +678,15 @@ export default function InvoiceDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Created */}
+          {/* Activity Timeline */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm text-neutral-500">Created</p>
-                <p className="font-medium text-neutral-900">{formatDate(invoice.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500">Last Updated</p>
-                <p className="font-medium text-neutral-900">{formatDate(invoice.updated_at)}</p>
-              </div>
+            <CardContent className="pt-6">
+              <ActivityTimeline
+                contentType="invoices.invoice"
+                objectId={invoice.id}
+                maxItems={5}
+                compact
+              />
             </CardContent>
           </Card>
         </div>

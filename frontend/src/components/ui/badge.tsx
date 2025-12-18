@@ -77,9 +77,10 @@ const statusVariants: Record<string, BadgeProps['variant']> = {
 
 const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
   ({ status, className, ...props }, ref) => {
-    const normalizedStatus = status.toLowerCase().replace(/-/g, '_');
+    const safeStatus = status || 'unknown';
+    const normalizedStatus = safeStatus.toLowerCase().replace(/-/g, '_');
     const variant = statusVariants[normalizedStatus] || 'default';
-    const displayText = status.replace(/_/g, ' ').replace(/-/g, ' ');
+    const displayText = safeStatus.replace(/_/g, ' ').replace(/-/g, ' ');
 
     return (
       <Badge

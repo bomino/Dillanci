@@ -92,6 +92,15 @@ class RFQViewSet(viewsets.ModelViewSet):
         return self._handle_workflow_action(rfq, rfq.open_for_bids)
 
     @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """
+        Alias for open_for_bids - Publish RFQ to suppliers (DRAFT -> OPEN).
+
+        This is a convenience alias for frontend compatibility.
+        """
+        return self.open_for_bids(request, pk)
+
+    @action(detail=True, methods=['post'])
     def close_bids(self, request, pk=None):
         """Close RFQ for bid submissions (OPEN -> CLOSED)."""
         rfq = self.get_object()
