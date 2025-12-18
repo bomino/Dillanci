@@ -1,0 +1,559 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+/* Enhanced Login Page Styles */
+
+/* Animated Background */
+.login-animated-bg {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.login-animated-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #faf9f6 0%, #fff5eb 50%, #f0e6d6 100%);
+}
+
+/* Floating shapes */
+.floating-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.6;
+    animation: float-drift ease-in-out infinite;
+}
+
+.shape-1 {
+    width: 300px;
+    height: 300px;
+    background: rgba(201, 179, 130, 0.25);
+    left: 10%;
+    top: 15%;
+    animation-duration: 25s;
+}
+
+.shape-2 {
+    width: 400px;
+    height: 400px;
+    background: rgba(139, 69, 19, 0.12);
+    right: 5%;
+    top: 10%;
+    animation-duration: 30s;
+    animation-delay: -5s;
+}
+
+.shape-3 {
+    width: 280px;
+    height: 280px;
+    background: rgba(201, 179, 130, 0.2);
+    right: 15%;
+    bottom: 20%;
+    animation-duration: 35s;
+    animation-delay: -10s;
+}
+
+.shape-4 {
+    width: 200px;
+    height: 200px;
+    background: rgba(139, 69, 19, 0.1);
+    left: 5%;
+    bottom: 15%;
+    animation-duration: 28s;
+    animation-delay: -3s;
+}
+
+.shape-5 {
+    width: 150px;
+    height: 150px;
+    background: rgba(212, 201, 168, 0.3);
+    left: 40%;
+    top: 5%;
+    border-radius: 30%;
+    animation-duration: 22s;
+    animation-delay: -8s;
+}
+
+.shape-6 {
+    width: 180px;
+    height: 180px;
+    background: rgba(168, 149, 98, 0.15);
+    left: 25%;
+    bottom: 10%;
+    border-radius: 40%;
+    animation-duration: 32s;
+    animation-delay: -15s;
+}
+
+@keyframes float-drift {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(30px, -20px) rotate(5deg);
+    }
+    50% {
+        transform: translate(-20px, 30px) rotate(-5deg);
+    }
+    75% {
+        transform: translate(20px, 20px) rotate(3deg);
+    }
+}
+
+/* Content wrapper */
+body.login {
+    background: transparent !important;
+    min-height: 100vh;
+}
+
+body.login #container {
+    position: relative;
+    z-index: 10;
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+body.login #header {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+body.login #site-name {
+    animation: fade-slide-up 0.5s ease-out;
+}
+
+body.login .dillanci-admin-logo {
+    filter: none;
+    height: 80px;
+    transition: transform 0.3s ease;
+}
+
+body.login .dillanci-admin-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Login card */
+body.login #content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(139, 69, 19, 0.12), 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 35px;
+    border: 1px solid rgba(201, 179, 130, 0.3);
+    animation: fade-slide-up 0.5s ease-out 0.1s both;
+}
+
+body.login #content h1 {
+    text-align: center;
+    border-bottom: none;
+    color: var(--dillanci-accent);
+    margin-bottom: 8px;
+    font-size: 24px;
+    font-weight: 600;
+    padding-bottom: 0;
+}
+
+.login-subtitle {
+    text-align: center;
+    color: var(--dillanci-text-light);
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+/* Form styling */
+body.login form {
+    margin-top: 0;
+}
+
+body.login .form-row {
+    margin-bottom: 20px;
+}
+
+body.login label {
+    display: block;
+    font-weight: 600;
+    color: var(--dillanci-text-dark);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+body.login label.required::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+body.login input[type="text"],
+body.login input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--dillanci-border);
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.2s ease;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+body.login input[type="text"]:focus,
+body.login input[type="password"]:focus {
+    border-color: var(--dillanci-primary);
+    box-shadow: 0 0 0 4px rgba(201, 179, 130, 0.2);
+    outline: none;
+}
+
+body.login input[type="text"]::placeholder,
+body.login input[type="password"]::placeholder {
+    color: #aaa;
+}
+
+/* Submit button */
+body.login .submit-row {
+    padding: 0;
+    margin-top: 25px;
+    background: transparent;
+    border: none;
+}
+
+body.login input[type="submit"] {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--dillanci-accent) 0%, var(--dillanci-accent-dark) 100%);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.login input[type="submit"]:hover {
+    background: linear-gradient(135deg, var(--dillanci-accent-dark) 0%, #5a2a0d 100%);
+    box-shadow: 0 4px 16px rgba(139, 69, 19, 0.3);
+    transform: translateY(-1px);
+}
+
+body.login input[type="submit"]:active {
+    transform: translateY(0);
+}
+
+/* Error messages */
+body.login .errornote {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc3545;
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    animation: shake 0.5s ease-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+body.login .errorlist {
+    margin-top: 8px;
+}
+
+body.login .errorlist li {
+    color: #dc3545;
+    font-size: 13px;
+}
+
+/* Features showcase */
+.features-showcase {
+    margin-top: 30px;
+    animation: fade-slide-up 0.5s ease-out 0.3s both;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(201, 179, 130, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 69, 19, 0.1);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.feature-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.feature-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(201, 179, 130, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.feature-icon svg {
+    width: 20px;
+    height: 20px;
+    color: var(--dillanci-accent);
+}
+
+.feature-content h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dillanci-text-dark);
+    margin: 0 0 2px 0;
+}
+
+.feature-content p {
+    font-size: 11px;
+    color: var(--dillanci-text-light);
+    margin: 0;
+}
+
+/* Footer */
+.login-footer {
+    text-align: center;
+    margin-top: 30px;
+    animation: fade-slide-up 0.5s ease-out 0.4s both;
+}
+
+.login-footer p {
+    color: var(--dillanci-text-light);
+    font-size: 12px;
+    margin: 0;
+}
+
+.login-footer .version {
+    margin-top: 8px;
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+/* Help link */
+.login-help {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.login-help a {
+    color: var(--dillanci-accent);
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-help a:hover {
+    text-decoration: underline;
+}
+
+/* Animations */
+@keyframes fade-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    body.login #container {
+        padding: 15px;
+    }
+
+    body.login #content {
+        padding: 25px 20px;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dillanci-admin-logo {
+        height: 60px !important;
+    }
+}
+
+/* Hide default Django elements we're replacing */
+body.login #branding h1,
+body.login #user-tools {
+    display: none;
+}
+</style>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+
+{% block usertools %}{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block branding %}
+<!-- Animated Background -->
+<div class="login-animated-bg">
+    <div class="floating-shape shape-1"></div>
+    <div class="floating-shape shape-2"></div>
+    <div class="floating-shape shape-3"></div>
+    <div class="floating-shape shape-4"></div>
+    <div class="floating-shape shape-5"></div>
+    <div class="floating-shape shape-6"></div>
+</div>
+
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'admin/img/dillanci-logo.svg' %}"
+             alt="Dillanci"
+             class="dillanci-admin-logo"
+             onerror="this.onerror=null; this.src='{% static 'admin/img/dillanci-logo.png' %}';">
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Admin Panel Login" %}</h1>
+<p class="login-subtitle">{% trans "Enterprise Procurement Platform" %}</p>
+
+{% if form.errors and not form.non_field_errors %}
+<p class="errornote">
+{% blocktrans count counter=form.errors.items|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktrans %}
+</p>
+{% endif %}
+
+{% if form.non_field_errors %}
+{% for error in form.non_field_errors %}
+<p class="errornote">{{ error }}</p>
+{% endfor %}
+{% endif %}
+
+<form action="{{ app_path }}" method="post" id="login-form">{% csrf_token %}
+    <div class="form-row">
+        {{ form.username.errors }}
+        <label for="id_username" class="required">{% trans 'Username' %}</label>
+        {{ form.username }}
+    </div>
+    <div class="form-row">
+        {{ form.password.errors }}
+        <label for="id_password" class="required">{% trans 'Password' %}</label>
+        {{ form.password }}
+        <input type="hidden" name="next" value="{{ next }}">
+    </div>
+    {% url 'admin_password_reset' as password_reset_url %}
+    {% if password_reset_url %}
+    <div class="login-help">
+        <a href="{{ password_reset_url }}">{% trans 'Forgotten your password or username?' %}</a>
+    </div>
+    {% endif %}
+    <div class="submit-row">
+        <input type="submit" value="{% trans 'Sign In' %}">
+    </div>
+</form>
+
+<!-- Features Showcase -->
+<div class="features-showcase">
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-card-inner">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>{% trans "User Management" %}</h3>
+                    <p>{% trans "RBAC & role assignment" %}</p>
+                </div>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-card-inner">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>{% trans "Access Control" %}</h3>
+                    <p>{% trans "60+ permissions" %}</p>
+                </div>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-card-inner">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>{% trans "Organizations" %}</h3>
+                    <p>{% trans "Multi-tenant setup" %}</p>
+                </div>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-card-inner">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>{% trans "Audit Trail" %}</h3>
+                    <p>{% trans "Complete logging" %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="login-footer">
+    <p>{% trans "Need help? Contact your system administrator." %}</p>
+    <p class="version">Dillanci Admin v1.0.0</p>
+</div>
+{% endblock %}

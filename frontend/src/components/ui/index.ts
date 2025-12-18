@@ -127,3 +127,6 @@ export {
   Sparkline,
   CHART_COLORS,
 } from './charts';
+
+// Animated Background
+export { AnimatedBackground } from './AnimatedBackground';
