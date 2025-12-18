@@ -265,17 +265,47 @@ import { RequirePermission, RequireAdmin } from '@/components/auth/ProtectedRout
 
 ### Pre-defined Roles
 
-| Role | Description | Key Permissions |
+| Role | Description | Primary Modules |
 |------|-------------|-----------------|
-| Requester | Creates purchase requisitions | Create/view requisitions |
-| Budget Holder | Manages department budgets | Approve requisitions, manage budgets |
-| Procurement Officer | Handles sourcing activities | Manage RFQs/RFPs, create POs |
-| Procurement Manager | Oversees procurement team | Full procurement access |
-| Accounts Payable | Processes invoices | Manage invoices, process payments |
-| Warehouse Staff | Handles receiving | Manage goods receipts |
-| Finance Manager | Financial oversight | Full financial access |
-| Auditor | Read-only audit access | View all records |
-| Organization Admin | Full system access | All permissions |
+| **Requester** | End users who create purchase requisitions | Requisitions |
+| **Budget Holder** | Department managers who approve within budget | Requisitions (approve) |
+| **Procurement Officer** | Buyers handling sourcing and PO creation | RFQs, RFPs, POs, Suppliers |
+| **Procurement Manager** | Full procurement authority with approvals | All procurement + approvals |
+| **Accounts Payable** | Finance staff managing invoices and payments | Invoices, 3-way matching |
+| **Warehouse Staff** | Goods receipt and inventory management | Receiving |
+| **Finance Manager** | Financial oversight and budget control | Budget, Reports, Audit |
+| **Auditor** | Read-only access for compliance review | All modules (view only) |
+| **Organization Admin** | System administration and user management | Admin panel only |
+
+### Role → Module Access Matrix
+
+| Role | Requisitions | RFQs | RFPs | Purchase Orders | Receiving | Invoices | Suppliers | Contracts | Budget | Reports | Admin |
+|------|:------------:|:----:|:----:|:---------------:|:---------:|:--------:|:---------:|:---------:|:------:|:-------:|:-----:|
+| **Requester** | ✅ Create/Edit | ❌ | ❌ | ❌ | ❌ | ❌ | 👁️ View | ❌ | 👁️ View | ❌ | ❌ |
+| **Budget Holder** | ✅ Approve | ❌ | ❌ | ❌ | ❌ | ❌ | 👁️ View | ❌ | 👁️ View | 👁️ View | ❌ |
+| **Procurement Officer** | 👁️ View | ✅ Full | ✅ Full | ✅ Create/Edit | ❌ | ❌ | ✅ Create/Edit | ✅ Create/Edit | ❌ | 👁️ View | ❌ |
+| **Procurement Manager** | ✅ Approve | ✅ Full+Award | ✅ Full+Award | ✅ Full | ❌ | ❌ | ✅ Full | ✅ Full | ❌ | ✅ Export | ❌ |
+| **Accounts Payable** | ❌ | ❌ | ❌ | 👁️ View | 👁️ View | ✅ Full | 👁️ View | ❌ | ❌ | 👁️ View | ❌ |
+| **Warehouse Staff** | ❌ | ❌ | ❌ | 👁️ View | ✅ Full | ❌ | 👁️ View | ❌ | ❌ | ❌ | ❌ |
+| **Finance Manager** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Approve | ❌ | 👁️ View | ✅ Full | ✅ Full | Audit |
+| **Auditor** | 👁️ View All | 👁️ View | 👁️ View | 👁️ View All | 👁️ View | 👁️ View | 👁️ View | 👁️ View | 👁️ View | ✅ Full | Audit |
+| **Organization Admin** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Full |
+
+**Legend:** ✅ = Full/specified access | 👁️ = View only | ❌ = No access
+
+### Sidebar Visibility by Role
+
+| Role | Main Navigation | Admin Section |
+|------|-----------------|---------------|
+| Requester | Dashboard, Requisitions, Suppliers | ❌ |
+| Budget Holder | Dashboard, Requisitions, Suppliers, Reports | ❌ |
+| Procurement Officer | Dashboard, Requisitions, RFQs, RFPs, POs, Suppliers, Contracts, Reports | ❌ |
+| Procurement Manager | Dashboard, Requisitions, RFQs, RFPs, POs, Suppliers, Contracts, Reports | ❌ |
+| Accounts Payable | Dashboard, POs, Receiving, Invoices, Suppliers, Reports | ❌ |
+| Warehouse Staff | Dashboard, POs, Receiving, Suppliers | ❌ |
+| Finance Manager | Dashboard, Invoices, Contracts, Reports | Audit Logs |
+| Auditor | Dashboard, All Main Modules | Audit Logs |
+| Organization Admin | Dashboard, Settings | Users, Roles, Workflows, Organization |
 
 ### Permission Categories (50+ Permissions)
 

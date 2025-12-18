@@ -42,9 +42,10 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         login(request, user)
+        # Return user with roles and permissions for frontend RBAC
         return Response({
             'message': 'Login successful',
-            'user': UserSerializer(user).data,
+            'user': UserWithRolesSerializer(user).data,
         })
 
 
@@ -59,12 +60,14 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    """Get current user information."""
+    """Get current user information with roles and permissions."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        # Use UserWithRolesSerializer to include permissions and roles
+        # This is required for frontend RBAC to work for non-admin users
+        return Response(UserWithRolesSerializer(request.user).data)
 
     def patch(self, request):
         serializer = UserSerializer(
@@ -74,7 +77,8 @@ class MeView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        # Return updated user with roles/permissions
+        return Response(UserWithRolesSerializer(request.user).data)
 
 
 class PasswordChangeView(APIView):
@@ -151,7 +155,8 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user_roles = UserRole.objects.filter(user=user).select_related('role', 'assigned_by', 'delegated_by')
         serializer = UserRoleSerializer(user_roles, many=True)
-        return Response(serializer.data)
+        # Wrap in {results: ...} to match frontend pagination format expectation
+        return Response({'results': serializer.data})
 
     @action(detail=True, methods=['get'])
     def permissions(self, request, pk=None):
