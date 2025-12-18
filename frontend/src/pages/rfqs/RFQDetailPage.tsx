@@ -491,6 +491,30 @@ export default function RFQDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Comments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentsSection objectType="rfq" objectId={rfq.id} />
+            </CardContent>
+          </Card>
+
+          {/* Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Attachments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AttachmentsSection
+                objectType="rfq"
+                objectId={rfq.id}
+                acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -577,30 +601,6 @@ export default function RFQDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* Comments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Comments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CommentsSection objectType="rfq" objectId={rfq.id} />
-        </CardContent>
-      </Card>
-
-      {/* Attachments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Attachments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AttachmentsSection
-            objectType="rfq"
-            objectId={rfq.id}
-            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
-          />
-        </CardContent>
-      </Card>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

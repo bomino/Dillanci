@@ -382,6 +382,30 @@ export default function ReceivingDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Comments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentsSection objectType="goods_receipt" objectId={goodsReceipt.id} />
+            </CardContent>
+          </Card>
+
+          {/* Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Attachments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AttachmentsSection
+                objectType="goods_receipt"
+                objectId={goodsReceipt.id}
+                acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -459,30 +483,6 @@ export default function ReceivingDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* Comments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Comments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CommentsSection objectType="goods_receipt" objectId={goodsReceipt.id} />
-        </CardContent>
-      </Card>
-
-      {/* Attachments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Attachments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AttachmentsSection
-            objectType="goods_receipt"
-            objectId={goodsReceipt.id}
-            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
-          />
-        </CardContent>
-      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

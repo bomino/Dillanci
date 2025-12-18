@@ -580,6 +580,30 @@ export default function InvoiceDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Comments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentsSection objectType="invoice" objectId={invoice.id} />
+            </CardContent>
+          </Card>
+
+          {/* Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Attachments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AttachmentsSection
+                objectType="invoice"
+                objectId={invoice.id}
+                acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -691,30 +715,6 @@ export default function InvoiceDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* Comments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Comments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CommentsSection objectType="invoice" objectId={invoice.id} />
-        </CardContent>
-      </Card>
-
-      {/* Attachments Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Attachments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AttachmentsSection
-            objectType="invoice"
-            objectId={invoice.id}
-            acceptedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg']}
-          />
-        </CardContent>
-      </Card>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
