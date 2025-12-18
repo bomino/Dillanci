@@ -157,7 +157,9 @@ export default function UserDetailPage() {
   };
 
   // Available roles to assign (not already assigned)
-  const assignedRoleIds = new Set(userRoles?.map((ur) => ur.role) || []);
+  // Ensure userRoles is always an array
+  const userRolesArray = Array.isArray(userRoles) ? userRoles : [];
+  const assignedRoleIds = new Set(userRolesArray.map((ur) => ur.role));
   const availableRoles = allRoles?.results?.filter((role) => !assignedRoleIds.has(role.id)) || [];
 
   if (isLoading) {
@@ -345,7 +347,7 @@ export default function UserDetailPage() {
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
-              ) : userRoles?.length === 0 ? (
+              ) : userRolesArray.length === 0 ? (
                 <div className="text-center py-8 text-neutral-500">
                   <Shield className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>No roles assigned</p>
@@ -353,7 +355,7 @@ export default function UserDetailPage() {
                 </div>
               ) : (
                 <div className="divide-y">
-                  {userRoles?.map((userRole) => (
+                  {userRolesArray.map((userRole) => (
                     <div key={userRole.id} className="flex items-center justify-between py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">

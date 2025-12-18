@@ -463,8 +463,21 @@ export async function fetchUserStats(): Promise<UserStats> {
 }
 
 export async function fetchUserRoles(userId: string): Promise<UserRole[]> {
-  const response = await apiClient.get(`/users/${userId}/roles/`);
-  return response.data;
+  try {
+    const response = await apiClient.get(`/users/${userId}/roles/`);
+    // Handle both array response and paginated response with results
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data?.results && Array.isArray(response.data.results)) {
+      return response.data.results;
+    }
+    // Return empty array if response format is unexpected
+    return [];
+  } catch {
+    // Return empty array if endpoint fails
+    return [];
+  }
 }
 
 export async function fetchUserPermissions(userId: string): Promise<{ permissions: string[] }> {
