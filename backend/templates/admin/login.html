@@ -6,6 +6,19 @@
 <style>
 /* Enhanced Login Page Styles */
 
+/* Hide admin sidebar on login page */
+#nav-sidebar,
+.main > .sidebar,
+#nav-filter,
+.filtered {
+    display: none !important;
+}
+
+/* Ensure main content takes full width */
+.main {
+    display: block !important;
+}
+
 /* Animated Background */
 .login-animated-bg {
     position: fixed;
@@ -134,13 +147,26 @@ body.login #header {
 }
 
 body.login #site-name {
+    display: none;
+}
+
+/* Centered logo above login form */
+.login-logo {
+    text-align: center;
+    margin-bottom: 24px;
     animation: fade-slide-up 0.5s ease-out;
 }
 
+.login-logo a {
+    display: inline-block;
+}
+
 body.login .dillanci-admin-logo {
-    filter: none;
     height: 80px;
     transition: transform 0.3s ease;
+    opacity: 1 !important;
+    /* Apply filter to convert golden #c9b382 to darker brown for visibility */
+    filter: brightness(0.5) sepia(1) saturate(3) hue-rotate(-10deg) !important;
 }
 
 body.login .dillanci-admin-logo:hover {
@@ -416,9 +442,10 @@ body.login .errorlist li {
 }
 
 /* Hide default Django elements we're replacing */
-body.login #branding h1,
+body.login #branding,
+body.login #header,
 body.login #user-tools {
-    display: none;
+    display: none !important;
 }
 </style>
 {% endblock %}
@@ -443,8 +470,11 @@ body.login #user-tools {
     <div class="floating-shape shape-5"></div>
     <div class="floating-shape shape-6"></div>
 </div>
+{% endblock %}
 
-<div id="site-name">
+{% block content %}
+<!-- Centered Logo -->
+<div class="login-logo">
     <a href="{% url 'admin:index' %}">
         <img src="{% static 'admin/img/dillanci-logo.svg' %}"
              alt="Dillanci"
@@ -452,9 +482,7 @@ body.login #user-tools {
              onerror="this.onerror=null; this.src='{% static 'admin/img/dillanci-logo.png' %}';">
     </a>
 </div>
-{% endblock %}
 
-{% block content %}
 <h1>{% trans "Admin Panel Login" %}</h1>
 <p class="login-subtitle">{% trans "Enterprise Procurement Platform" %}</p>
 
