@@ -107,7 +107,7 @@ export function SpendByCategoryChart({
       <CardContent>
         <div className="flex flex-col lg:flex-row items-center gap-6">
           <div className="w-full lg:w-1/2 h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
               <PieChart>
                 <Pie
                   data={chartData}
@@ -232,7 +232,7 @@ export function SpendTrendChart({
       </CardHeader>
       <CardContent>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
             <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8e4df" />
               <XAxis
@@ -340,7 +340,7 @@ export function BudgetUtilizationChart({
       </CardHeader>
       <CardContent>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8e4df" horizontal={true} vertical={false} />
               <XAxis
@@ -399,8 +399,8 @@ export function Sparkline({
   className,
 }: SparklineProps) {
   return (
-    <div className={cn('w-full', className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={cn('w-full', className)} style={{ height, minHeight: 20, minWidth: 50 }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={50} minHeight={20}>
         <LineChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
           <Line
             type="monotone"

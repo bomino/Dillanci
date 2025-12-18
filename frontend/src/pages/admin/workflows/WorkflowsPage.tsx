@@ -568,14 +568,14 @@ export default function WorkflowsPage() {
               <div>
                 <label className="text-sm font-medium text-neutral-700">Required Role</label>
                 <Select
-                  value={newThreshold.required_role}
-                  onValueChange={(value) => setNewThreshold({ ...newThreshold, required_role: value })}
+                  value={newThreshold.required_role || '__none__'}
+                  onValueChange={(value) => setNewThreshold({ ...newThreshold, required_role: value === '__none__' ? '' : value })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Any role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any role</SelectItem>
+                    <SelectItem value="__none__">Any role</SelectItem>
                     {roles.map((role) => (
                       <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                     ))}

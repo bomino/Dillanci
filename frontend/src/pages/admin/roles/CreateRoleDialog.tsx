@@ -202,10 +202,17 @@ export default function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialo
 
                   return (
                     <div key={group.module}>
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => toggleModule(group.module)}
-                        className="w-full flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleModule(group.module);
+                          }
+                        }}
+                        className="w-full flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox
@@ -225,7 +232,7 @@ export default function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialo
                         ) : (
                           <ChevronRight className="h-4 w-4 text-neutral-400" />
                         )}
-                      </button>
+                      </div>
                       {isExpanded && (
                         <div className="pl-10 pr-3 pb-3 space-y-1">
                           {group.permissions.map((permission) => (
