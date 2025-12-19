@@ -7,12 +7,19 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.core.models import APIKey, ApprovalThreshold, Notification, SystemPreference
+from rest_framework.parsers import FormParser, MultiPartParser
+
+from apps.core.models import APIKey, ApprovalThreshold, Attachment, Comment, Notification, SystemPreference
 from apps.core.serializers import (
     APIKeyCreateSerializer,
     APIKeyResponseSerializer,
     APIKeySerializer,
     ApprovalThresholdSerializer,
+    AttachmentSerializer,
+    AttachmentUploadSerializer,
+    CommentCreateSerializer,
+    CommentSerializer,
+    CommentUpdateSerializer,
     NotificationCreateSerializer,
     NotificationSerializer,
     NotificationSummarySerializer,
@@ -454,4 +461,174 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Delete a notification (soft delete by archiving)."""
         instance = self.get_object()
         instance.archive()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# =============================================================================
+# Comment ViewSet
+# =============================================================================
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing comments.
+
+    Endpoints:
+    - GET /comments/?object_type=xxx&object_id=yyy - List comments for an object
+    - POST /comments/ - Create a new comment
+    - PATCH /comments/{id}/ - Update a comment
+    - DELETE /comments/{id}/ - Delete a comment
+    """
+
+    queryset = Comment.objects.filter(is_deleted=False)
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CommentCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return CommentUpdateSerializer
+        return CommentSerializer
+
+    def get_queryset(self):
+        """Filter comments by object_type and object_id."""
+        queryset = super().get_queryset()
+        user = self.request.user
+
+        # Filter by organization
+        if hasattr(user, 'organization') and user.organization:
+            queryset = queryset.filter(organization=user.organization)
+
+        # Filter by object_type and object_id
+        object_type = self.request.query_params.get('object_type')
+        object_id = self.request.query_params.get('object_id')
+
+        if object_type:
+            queryset = queryset.filter(object_type=object_type)
+        if object_id:
+            queryset = queryset.filter(object_id=object_id)
+
+        return queryset.select_related('author', 'parent')
+
+    def create(self, request, *args, **kwargs):
+        """Create a new comment."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Get parent if specified
+        parent = None
+        parent_id = serializer.validated_data.pop('parent_id', None)
+        if parent_id:
+            try:
+                parent = Comment.objects.get(id=parent_id, is_deleted=False)
+            except Comment.DoesNotExist:
+                return Response(
+                    {'error': 'Parent comment not found'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        comment = Comment.objects.create(
+            organization=request.user.organization,
+            author=request.user,
+            parent=parent,
+            **serializer.validated_data
+        )
+
+        output_serializer = CommentSerializer(comment)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update a comment (only author can update)."""
+        instance = self.get_object()
+        if instance.author != request.user:
+            return Response(
+                {'error': 'You can only edit your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a comment (soft delete, only author can delete)."""
+        instance = self.get_object()
+        if instance.author != request.user:
+            return Response(
+                {'error': 'You can only delete your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# =============================================================================
+# Attachment ViewSet
+# =============================================================================
+
+class AttachmentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing attachments.
+
+    Endpoints:
+    - GET /attachments/?object_type=xxx&object_id=yyy - List attachments for an object
+    - POST /attachments/ - Upload a new attachment
+    - DELETE /attachments/{id}/ - Delete an attachment
+    """
+
+    queryset = Attachment.objects.filter(is_deleted=False)
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AttachmentUploadSerializer
+        return AttachmentSerializer
+
+    def get_queryset(self):
+        """Filter attachments by object_type and object_id."""
+        queryset = super().get_queryset()
+        user = self.request.user
+
+        # Filter by organization
+        if hasattr(user, 'organization') and user.organization:
+            queryset = queryset.filter(organization=user.organization)
+
+        # Filter by object_type and object_id
+        object_type = self.request.query_params.get('object_type')
+        object_id = self.request.query_params.get('object_id')
+
+        if object_type:
+            queryset = queryset.filter(object_type=object_type)
+        if object_id:
+            queryset = queryset.filter(object_id=object_id)
+
+        return queryset.select_related('uploaded_by')
+
+    def create(self, request, *args, **kwargs):
+        """Upload a new attachment."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        file = serializer.validated_data['file']
+
+        attachment = Attachment.objects.create(
+            organization=request.user.organization,
+            uploaded_by=request.user,
+            object_type=serializer.validated_data['object_type'],
+            object_id=serializer.validated_data['object_id'],
+            file=file,
+            filename=file.name,
+            file_type=file.content_type or '',
+            file_size=file.size,
+        )
+
+        output_serializer = AttachmentSerializer(attachment, context={'request': request})
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete an attachment (soft delete, only uploader can delete)."""
+        instance = self.get_object()
+        if instance.uploaded_by != request.user:
+            return Response(
+                {'error': 'You can only delete your own attachments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

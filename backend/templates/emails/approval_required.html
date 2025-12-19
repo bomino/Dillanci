@@ -1,0 +1,73 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Approval Required - {{ document_type }} {{ document_number }}{% endblock %}
+
+{% block container_class %} priority-high{% endblock %}
+
+{% block content %}
+<h1 class="email-title">Approval Required</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        A new <strong>{{ document_type }}</strong> requires your approval.
+        {% if requestor_name %}Submitted by {{ requestor_name }}.{% endif %}
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">{{ document_type }} Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ document_number }}</td>
+        </tr>
+        {% if document_title %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Title</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ document_title }}</td>
+        </tr>
+        {% endif %}
+        {% if total_amount %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Amount</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ currency }} {{ total_amount|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        {% if supplier_name %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        {% endif %}
+        {% if department %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Department</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ department }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge status-pending">Pending Approval</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if description %}
+<div class="email-body">
+    <p><strong>Description:</strong></p>
+    <p>{{ description }}</p>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">Review &amp; Approve</a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        You're receiving this email because you're an approver for {{ document_type|lower }}s in your organization.
+    </p>
+</div>
+{% endblock %}

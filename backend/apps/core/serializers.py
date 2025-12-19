@@ -4,7 +4,7 @@ Core serializers for admin configuration models.
 
 from rest_framework import serializers
 
-from apps.core.models import APIKey, ApprovalThreshold, Notification, SystemPreference
+from apps.core.models import APIKey, ApprovalThreshold, Attachment, Comment, Notification, SystemPreference
 
 
 class ApprovalThresholdSerializer(serializers.ModelSerializer):
@@ -202,3 +202,126 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
             'link',
             'metadata',
         ]
+
+
+# =============================================================================
+# Comment Serializers
+# =============================================================================
+
+class CommentAuthorSerializer(serializers.Serializer):
+    """Serializer for comment author info."""
+
+    id = serializers.UUIDField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Serializer for Comment model."""
+
+    author = CommentAuthorSerializer(read_only=True)
+    parent_id = serializers.UUIDField(source='parent.id', read_only=True, allow_null=True)
+    reply_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = [
+            'id',
+            'content',
+            'author',
+            'object_type',
+            'object_id',
+            'parent_id',
+            'reply_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at']
+
+
+class CommentCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating comments."""
+
+    parent_id = serializers.UUIDField(required=False, allow_null=True)
+
+    class Meta:
+        model = Comment
+        fields = [
+            'content',
+            'object_type',
+            'object_id',
+            'parent_id',
+        ]
+
+    def validate_parent_id(self, value):
+        if value:
+            try:
+                Comment.objects.get(id=value, is_deleted=False)
+            except Comment.DoesNotExist:
+                raise serializers.ValidationError('Parent comment not found.')
+        return value
+
+
+class CommentUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating comments."""
+
+    class Meta:
+        model = Comment
+        fields = ['content']
+
+
+# =============================================================================
+# Attachment Serializers
+# =============================================================================
+
+class AttachmentUploaderSerializer(serializers.Serializer):
+    """Serializer for attachment uploader info."""
+
+    id = serializers.UUIDField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for Attachment model."""
+
+    uploaded_by = AttachmentUploaderSerializer(read_only=True)
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Attachment
+        fields = [
+            'id',
+            'filename',
+            'file_type',
+            'file_size',
+            'url',
+            'object_type',
+            'object_id',
+            'uploaded_by',
+            'uploaded_at',
+        ]
+        read_only_fields = ['id', 'filename', 'file_type', 'file_size', 'url', 'uploaded_by', 'uploaded_at']
+
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if obj.file and request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.url
+
+
+class AttachmentUploadSerializer(serializers.Serializer):
+    """Serializer for uploading attachments."""
+
+    file = serializers.FileField()
+    object_type = serializers.CharField(max_length=50)
+    object_id = serializers.UUIDField()
+
+    def validate_file(self, value):
+        # Max file size: 10MB
+        max_size = 10 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(f'File size exceeds maximum allowed ({max_size // 1024 // 1024}MB).')
+        return value

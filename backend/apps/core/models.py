@@ -364,6 +364,26 @@ class Notification(BaseModel):
         ('GOODS_RECEIVED', 'Goods Received'),
         ('BUDGET_ALERT', 'Budget Alert'),
         ('SYSTEM_ALERT', 'System Alert'),
+        # RFP-specific notification types
+        ('RFP_PUBLISHED', 'RFP Published'),
+        ('RFP_INVITATION', 'RFP Invitation Received'),
+        ('RFP_DEADLINE_REMINDER', 'RFP Deadline Reminder'),
+        ('RFP_QA_ANSWERED', 'RFP Question Answered'),
+        ('PROPOSAL_RECEIVED', 'Proposal Received'),
+        ('PROPOSAL_SHORTLISTED', 'Proposal Shortlisted'),
+        ('PROPOSAL_AWARDED', 'Proposal Awarded'),
+        ('PROPOSAL_NOT_AWARDED', 'Proposal Not Awarded'),
+        ('BAFO_REQUESTED', 'BAFO Requested'),
+        ('BAFO_RECEIVED', 'BAFO Response Received'),
+        ('RFP_EVALUATION_COMPLETE', 'RFP Evaluation Complete'),
+        ('RFP_CLOSED', 'RFP Closed'),
+        # RFQ-specific notification types (for symmetry)
+        ('RFQ_PUBLISHED', 'RFQ Published'),
+        ('RFQ_INVITATION', 'RFQ Invitation Received'),
+        ('RFQ_DEADLINE_REMINDER', 'RFQ Deadline Reminder'),
+        ('QUOTE_RECEIVED', 'Quote Received'),
+        ('RFQ_AWARDED', 'RFQ Awarded'),
+        ('RFQ_CLOSED', 'RFQ Closed'),
     ]
 
     STATUS_CHOICES = [
@@ -415,6 +435,21 @@ class Notification(BaseModel):
 
     # Timestamps
     read_at = models.DateTimeField(null=True, blank=True)
+
+    # Email tracking
+    email_sent = models.BooleanField(
+        default=False,
+        help_text='Whether email notification was sent'
+    )
+    email_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When email was sent'
+    )
+    email_error = models.TextField(
+        blank=True,
+        help_text='Error message if email failed to send'
+    )
 
     # Metadata
     metadata = models.JSONField(
@@ -529,3 +564,136 @@ class Notification(BaseModel):
             )
             notifications.append(notification)
         return notifications
+
+
+# =============================================================================
+# Comment Model - Generic comments for any object
+# =============================================================================
+
+class Comment(BaseModel):
+    """
+    Generic comment model that can be attached to any object.
+
+    Uses string-based object type and UUID for flexible attachment to any model.
+    Supports threaded comments via parent_id.
+    """
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+    author = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+
+    # Generic relation
+    object_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text='Type of object (e.g., requisition, rfq, rfp, po)',
+    )
+    object_id = models.UUIDField(
+        db_index=True,
+        help_text='UUID of the related object',
+    )
+
+    # Comment content
+    content = models.TextField()
+
+    # Threading support
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+    )
+
+    class Meta:
+        db_table = 'comment'
+        verbose_name = 'Comment'
+        verbose_name_plural = 'Comments'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['object_type', 'object_id']),
+            models.Index(fields=['author', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"Comment by {self.author.email} on {self.object_type}:{self.object_id}"
+
+    @property
+    def reply_count(self):
+        """Get the count of replies to this comment."""
+        return self.replies.filter(is_deleted=False).count()
+
+
+# =============================================================================
+# Attachment Model - Generic file attachments for any object
+# =============================================================================
+
+def attachment_upload_path(instance, filename):
+    """Generate upload path for attachments."""
+    return f'attachments/{instance.organization_id}/{instance.object_type}/{instance.object_id}/{filename}'
+
+
+class Attachment(BaseModel):
+    """
+    Generic attachment model that can be attached to any object.
+
+    Uses string-based object type and UUID for flexible attachment to any model.
+    """
+
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    uploaded_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='uploaded_attachments',
+    )
+
+    # Generic relation
+    object_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text='Type of object (e.g., requisition, rfq, rfp, po)',
+    )
+    object_id = models.UUIDField(
+        db_index=True,
+        help_text='UUID of the related object',
+    )
+
+    # File info
+    file = models.FileField(upload_to=attachment_upload_path)
+    filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=100, blank=True)
+    file_size = models.PositiveIntegerField(default=0)
+
+    # Timestamps
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'attachment'
+        verbose_name = 'Attachment'
+        verbose_name_plural = 'Attachments'
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['object_type', 'object_id']),
+            models.Index(fields=['uploaded_by', 'uploaded_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.filename} attached to {self.object_type}:{self.object_id}"
+
+    @property
+    def url(self):
+        """Get the URL for downloading this attachment."""
+        if self.file:
+            return self.file.url
+        return None

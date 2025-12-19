@@ -178,6 +178,9 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies for session authentication
 
+# Frontend URL (for generating portal registration links)
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
 # CSRF Trusted Origins (required for session auth from different origins)
 CSRF_TRUSTED_ORIGINS = os.getenv(
     'CSRF_TRUSTED_ORIGINS',
@@ -202,6 +205,29 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat Schedule
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'check-expiring-contracts': {
+        'task': 'apps.contracts.tasks.check_expiring_contracts',
+        'schedule': crontab(hour=8, minute=0),  # Daily at 8 AM UTC
+    },
+}
+
+# Email Configuration (SendGrid)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.sendgrid.net')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'apikey')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Dillanci <noreply@dillanci.com>')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'Dillanci <noreply@dillanci.com>')
+
+# Portal Configuration
+PORTAL_BASE_URL = os.getenv('PORTAL_BASE_URL', 'http://localhost:3000/portal')
+PORTAL_INVITATION_EXPIRY_DAYS = int(os.getenv('PORTAL_INVITATION_EXPIRY_DAYS', '7'))
 
 # Logging
 LOGGING = {

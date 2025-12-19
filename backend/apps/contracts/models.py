@@ -103,6 +103,11 @@ class Contract(SoftDeleteModel):
         default=30,
         help_text='Days before expiry to send renewal notice',
     )
+    last_renewal_alert_sent = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the last renewal alert was sent (for deduplication)',
+    )
 
     # Payment and terms
     payment_terms = models.CharField(
@@ -138,6 +143,22 @@ class Contract(SoftDeleteModel):
         blank=True,
         related_name='contracts',
         help_text='RFQ this contract was created from',
+    )
+    rfp = models.ForeignKey(
+        'rfps.RFP',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contracts',
+        help_text='RFP this contract was created from',
+    )
+    proposal = models.ForeignKey(
+        'rfps.Proposal',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contracts',
+        help_text='Proposal this contract was created from',
     )
 
     # Amendments
@@ -299,6 +320,66 @@ class Contract(SoftDeleteModel):
         self.save(update_fields=[
             'start_date', 'end_date', 'total_value', 'amendment_number', 'updated_at'
         ])
+
+    @classmethod
+    def create_from_rfp(cls, rfp, proposal, created_by):
+        """
+        Create a Contract from an awarded RFP proposal.
+
+        Args:
+            rfp: The awarded RFP
+            proposal: The awarded proposal
+            created_by: User creating the contract
+
+        Returns:
+            Contract: The created contract in DRAFT status
+
+        Raises:
+            ValueError: If RFP or proposal is not in correct state
+        """
+        if rfp.status != 'AWARDED':
+            raise ValueError('Can only create contract from awarded RFP')
+        if proposal.status != 'AWARDED':
+            raise ValueError('Proposal must be awarded to create contract')
+        if proposal.rfp_id != rfp.id:
+            raise ValueError('Proposal does not belong to this RFP')
+
+        # Map RFP payment terms to Contract payment terms
+        payment_terms_map = {
+            'NET15': 'NET15',
+            'NET30': 'NET30',
+            'NET45': 'NET45',
+            'NET60': 'NET60',
+            'NET90': 'NET90',
+        }
+        payment_terms = payment_terms_map.get(rfp.payment_terms, 'NET30')
+
+        contract = cls.objects.create(
+            organization=rfp.organization,
+            supplier=proposal.supplier,
+            title=f'Contract for {rfp.title}',
+            description=rfp.description,
+            created_by=created_by,
+            rfp=rfp,
+            proposal=proposal,
+            total_value=proposal.total_amount,
+            currency=rfp.currency,
+            payment_terms=payment_terms,
+            start_date=rfp.contract_start_date,
+            end_date=rfp.contract_end_date,
+        )
+
+        # Copy proposal line items to contract lines
+        for prop_line in proposal.line_items.all():
+            ContractLine.objects.create(
+                contract=contract,
+                description=prop_line.rfp_line_item.description,
+                unit_price=prop_line.unit_price,
+                unit_of_measure=prop_line.rfp_line_item.unit_of_measure,
+                catalog_item=prop_line.rfp_line_item.catalog_item,
+            )
+
+        return contract
 
 
 class ContractLine(SoftDeleteModel):

@@ -122,6 +122,22 @@ class PurchaseOrder(SoftDeleteModel):
         related_name='purchase_orders',
     )
 
+    # Optional links to RFP/Proposal
+    rfp = models.ForeignKey(
+        'rfps.RFP',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_orders',
+    )
+    proposal = models.ForeignKey(
+        'rfps.Proposal',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_orders',
+    )
+
     # Shipping info
     ship_to_address = models.TextField(blank=True)
     shipping_terms = models.CharField(max_length=100, blank=True)
@@ -343,6 +359,55 @@ class PurchaseOrder(SoftDeleteModel):
 
         return po
 
+    @classmethod
+    def create_from_proposal(cls, proposal, budget_line, created_by, contract=None):
+        """
+        Create a PO from an awarded RFP proposal.
+
+        Args:
+            proposal: The awarded proposal
+            budget_line: Budget line to charge
+            created_by: User creating the PO
+            contract: Optional contract to link (if Contract was created first)
+
+        Returns:
+            PurchaseOrder: The created purchase order
+
+        Raises:
+            ValueError: If proposal is not awarded
+        """
+        if proposal.status != 'AWARDED':
+            raise ValueError('Can only create PO from awarded proposal')
+
+        rfp = proposal.rfp
+
+        po = cls.objects.create(
+            organization=rfp.organization,
+            created_by=created_by,
+            supplier=proposal.supplier,
+            budget_line=budget_line,
+            title=f'PO from {rfp.title}',
+            description=rfp.description,
+            rfp=rfp,
+            proposal=proposal,
+            requisition=rfp.requisition,
+            contract=contract,
+        )
+
+        # Copy proposal line items to PO lines
+        for prop_line in proposal.line_items.all():
+            POLine.objects.create(
+                purchase_order=po,
+                description=prop_line.rfp_line_item.description,
+                quantity=prop_line.quantity,
+                unit_price=prop_line.unit_price,
+                unit_of_measure=prop_line.rfp_line_item.unit_of_measure,
+                catalog_item=prop_line.rfp_line_item.catalog_item,
+                proposal_line=prop_line,
+            )
+
+        return po
+
 
 class POLine(SoftDeleteModel):
     """Line item in a Purchase Order."""
@@ -387,6 +452,14 @@ class POLine(SoftDeleteModel):
         null=True,
         blank=True,
         related_name='po_lines',
+    )
+    proposal_line = models.ForeignKey(
+        'rfps.ProposalLineItem',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='po_lines',
+        help_text='Source proposal line this PO line was created from',
     )
 
     # Receiving tracking
@@ -442,3 +515,166 @@ class POLine(SoftDeleteModel):
     def is_fully_invoiced(self) -> bool:
         """Check if line is fully invoiced."""
         return self.quantity_invoiced >= self.quantity
+
+
+# =============================================================================
+# Supplier Portal - PO Acknowledgment
+# =============================================================================
+
+class POAcknowledgment(SoftDeleteModel):
+    """
+    Track supplier acknowledgment of purchase orders via the portal.
+
+    When a PO is sent to a supplier, they can acknowledge receipt through
+    the supplier portal. This tracks their response including any revised
+    delivery dates or comments.
+    """
+
+    STATUSES = [
+        ('PENDING', 'Pending'),
+        ('ACKNOWLEDGED', 'Acknowledged'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    purchase_order = models.OneToOneField(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name='acknowledgment',
+        help_text='Purchase order being acknowledged',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+        default='PENDING',
+        help_text='Acknowledgment status',
+    )
+
+    # Response details
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the supplier acknowledged the PO',
+    )
+    acknowledged_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='po_acknowledgments',
+        help_text='Portal user who acknowledged',
+    )
+
+    # Supplier can propose revised delivery date
+    revised_delivery_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Supplier proposed delivery date (if different from PO)',
+    )
+    delivery_date_reason = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text='Reason for revised delivery date',
+    )
+
+    # Supplier comments
+    comments = models.TextField(
+        blank=True,
+        help_text='Supplier comments or notes',
+    )
+
+    # Rejection details (if rejected)
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text='Reason for rejection (if status is REJECTED)',
+    )
+
+    # Internal tracking
+    reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When last acknowledgment reminder was sent',
+    )
+    reminders_sent = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of reminder emails sent',
+    )
+
+    class Meta:
+        db_table = 'po_acknowledgment'
+        verbose_name = 'PO Acknowledgment'
+        verbose_name_plural = 'PO Acknowledgments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.purchase_order.number} - {self.status}'
+
+    @property
+    def is_pending(self) -> bool:
+        """Check if acknowledgment is still pending."""
+        return self.status == 'PENDING'
+
+    @property
+    def has_revised_delivery(self) -> bool:
+        """Check if supplier proposed a different delivery date."""
+        return (
+            self.revised_delivery_date is not None and
+            self.revised_delivery_date != self.purchase_order.expected_delivery
+        )
+
+    def acknowledge(self, user, comments='', revised_delivery_date=None, delivery_date_reason=''):
+        """
+        Mark the PO as acknowledged by the supplier.
+
+        Args:
+            user: Portal user acknowledging the PO
+            comments: Optional supplier comments
+            revised_delivery_date: Optional revised delivery date
+            delivery_date_reason: Reason for revised delivery date
+        """
+        self.status = 'ACKNOWLEDGED'
+        self.acknowledged_at = timezone.now()
+        self.acknowledged_by = user
+        self.comments = comments
+
+        if revised_delivery_date:
+            self.revised_delivery_date = revised_delivery_date
+            self.delivery_date_reason = delivery_date_reason
+
+        self.save(update_fields=[
+            'status', 'acknowledged_at', 'acknowledged_by', 'comments',
+            'revised_delivery_date', 'delivery_date_reason', 'updated_at'
+        ])
+
+    def reject(self, user, rejection_reason):
+        """
+        Reject the PO (supplier cannot fulfill).
+
+        Args:
+            user: Portal user rejecting the PO
+            rejection_reason: Reason for rejection
+        """
+        self.status = 'REJECTED'
+        self.acknowledged_at = timezone.now()
+        self.acknowledged_by = user
+        self.rejection_reason = rejection_reason
+        self.save(update_fields=[
+            'status', 'acknowledged_at', 'acknowledged_by',
+            'rejection_reason', 'updated_at'
+        ])
+
+    @classmethod
+    def create_for_po(cls, purchase_order):
+        """
+        Create an acknowledgment record when PO is sent to supplier.
+
+        Args:
+            purchase_order: PurchaseOrder instance
+
+        Returns:
+            POAcknowledgment instance
+        """
+        acknowledgment, created = cls.objects.get_or_create(
+            purchase_order=purchase_order,
+            defaults={'status': 'PENDING'}
+        )
+        return acknowledgment

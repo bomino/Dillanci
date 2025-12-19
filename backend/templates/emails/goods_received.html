@@ -1,0 +1,89 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Goods Received - {{ po_number }}{% endblock %}
+
+{% block content %}
+<h1 class="email-title">Goods Received</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        Goods have been received for your <strong>Purchase Order</strong>.
+        {% if is_partial %}This is a <strong>partial receipt</strong>.{% endif %}
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">PO Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ po_number }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Receipt Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ receipt_number }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Received By</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ received_by }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Received At</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ received_at }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge {% if is_partial %}status-pending{% else %}status-approved{% endif %}">
+                    {% if is_partial %}Partially Received{% else %}Fully Received{% endif %}
+                </span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if items_received %}
+<div class="email-body">
+    <p><strong>Items Received:</strong></p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="border: 1px solid #e5e5e5; border-radius: 4px; font-size: 13px;">
+        <thead>
+            <tr style="background-color: #fafaf9;">
+                <th style="text-align: left; border-bottom: 1px solid #e5e5e5;">Item</th>
+                <th style="text-align: right; border-bottom: 1px solid #e5e5e5;">Qty Received</th>
+                <th style="text-align: right; border-bottom: 1px solid #e5e5e5;">Qty Ordered</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items_received %}
+            <tr>
+                <td style="border-bottom: 1px solid #e5e5e5;">{{ item.description }}</td>
+                <td style="text-align: right; border-bottom: 1px solid #e5e5e5;">{{ item.quantity_received }}</td>
+                <td style="text-align: right; border-bottom: 1px solid #e5e5e5;">{{ item.quantity_ordered }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if receipt_notes %}
+<div class="email-body">
+    <p><strong>Receipt Notes:</strong></p>
+    <p style="padding: 12px; background-color: #fafaf9; border-radius: 4px;">{{ receipt_notes }}</p>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">View Receipt Details</a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        You're receiving this email because you're the creator of this purchase order.
+    </p>
+</div>
+{% endblock %}

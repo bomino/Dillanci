@@ -153,6 +153,12 @@ class ContractSerializer(serializers.ModelSerializer):
     rfq_number = serializers.CharField(
         source='rfq.number', read_only=True
     )
+    rfp_number = serializers.CharField(
+        source='rfp.number', read_only=True
+    )
+    proposal_number = serializers.CharField(
+        source='proposal.proposal_number', read_only=True
+    )
     parent_contract_number = serializers.CharField(
         source='parent_contract.number', read_only=True
     )
@@ -219,6 +225,10 @@ class ContractSerializer(serializers.ModelSerializer):
             'termination_reason',
             'rfq',
             'rfq_number',
+            'rfp',
+            'rfp_number',
+            'proposal',
+            'proposal_number',
             'parent_contract',
             'parent_contract_number',
             'amendment_number',
@@ -273,6 +283,8 @@ class ContractCreateSerializer(serializers.ModelSerializer):
             'terms_and_conditions',
             'notes',
             'rfq',
+            'rfp',
+            'proposal',
             'lines',
         ]
 

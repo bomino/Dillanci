@@ -54,9 +54,11 @@ import { Badge } from '@/components/ui/badge';
 import {
   RFPForm,
   EvaluationTeamPanel,
+  EvaluationSummaryCard,
   ScoringMatrix,
   QASection,
   BAFOPanel,
+  BAFOResponseView,
   ProposalsList,
   type EvaluationTeamMember,
   type EvaluatorRole,
@@ -64,8 +66,13 @@ import {
   type ProposalForScoring,
   type Score,
   type RFPQuestion,
+  type QAVisibility,
   type BAFORound,
+  type BAFOResponse,
+  type ShortlistedProposal,
   type Proposal,
+  type ProposalScoreSummary,
+  type EvaluationStats,
 } from '@/components/rfps';
 import { CommentsSection } from '@/components/ui/comments-section';
 import { AttachmentsSection } from '@/components/ui/attachments-section';
@@ -80,9 +87,22 @@ import {
   useCancelRFP,
   useVendorProposals,
   useSuppliersForRFP,
+  useRFPQA,
+  useAnswerQuestion,
+  usePublishAnswer,
+  useUnpublishAnswer,
+  useEditAnswer,
+  useDeleteQuestion,
+  useBAFOData,
+  useCreateBAFORound,
+  useOpenBAFORound,
+  useCloseBAFORound,
+  useUpdateBAFORound,
+  useAwardFromBAFO,
   RFP_STATUS_CONFIG,
   RFP_CATEGORY_CONFIG,
   type RFPPayload,
+  type QAVisibility as QAVisibilityAPI,
 } from '@/lib/api/rfps';
 
 export default function RFPDetailPage() {
@@ -95,7 +115,11 @@ export default function RFPDetailPage() {
   const [awardDialogOpen, setAwardDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState('');
 
-  // Mock state for components (would come from API in real app)
+  // BAFO response view state
+  const [selectedBAFOResponse, setSelectedBAFOResponse] = useState<BAFOResponse | null>(null);
+  const [bafoResponseDialogOpen, setBAFOResponseDialogOpen] = useState(false);
+
+  // Mock state for evaluation components (would come from API in real app)
   const [evaluationTeam, setEvaluationTeam] = useState<EvaluationTeamMember[]>([
     {
       id: '1',
@@ -127,44 +151,31 @@ export default function RFPDetailPage() {
   ]);
 
   const [scores, setScores] = useState<Score[]>([]);
-  const [questions, setQuestions] = useState<RFPQuestion[]>([
-    {
-      id: 'q1',
-      rfp_id: id || '',
-      supplier_id: 's1',
-      supplier_name: 'ABC Tech Solutions',
-      question: 'Can you clarify the expected integration timeline with existing systems?',
-      answer: 'The integration should be completed within 30 days of contract signing. We expect phased rollout starting with pilot department.',
-      answered_by: 'John Smith',
-      answered_at: '2024-12-10T14:00:00Z',
-      is_published: true,
-      published_at: '2024-12-10T16:00:00Z',
-      requires_amendment: false,
-      amendment_note: null,
-      created_at: '2024-12-09T10:00:00Z',
-    },
-    {
-      id: 'q2',
-      rfp_id: id || '',
-      supplier_id: 's2',
-      supplier_name: 'Global Systems Inc',
-      question: 'What are the specific security certifications required for the solution?',
-      answer: null,
-      answered_by: null,
-      answered_at: null,
-      is_published: false,
-      published_at: null,
-      requires_amendment: false,
-      amendment_note: null,
-      created_at: '2024-12-11T09:00:00Z',
-    },
-  ]);
-
-  const [bafoRound, setBAFORound] = useState<BAFORound | null>(null);
 
   const { data: rfp, isLoading, error } = useRFP(id);
   const { data: proposals = [] } = useVendorProposals(id);
   const { data: suppliers = [] } = useSuppliersForRFP();
+
+  // Q&A data and mutations
+  const { data: qaData = [], isLoading: qaLoading } = useRFPQA(id);
+  const answerQuestionMutation = useAnswerQuestion();
+  const publishAnswerMutation = usePublishAnswer();
+  const unpublishAnswerMutation = useUnpublishAnswer();
+  const editAnswerMutation = useEditAnswer();
+  const deleteQuestionMutation = useDeleteQuestion();
+
+  // BAFO data and mutations
+  const {
+    currentRound: bafoCurrentRound,
+    previousRounds: bafoPreviousRounds,
+    shortlistedProposals: bafoShortlistedProposals,
+    isLoading: bafoLoading,
+  } = useBAFOData(id);
+  const createBAFORoundMutation = useCreateBAFORound();
+  const openBAFORoundMutation = useOpenBAFORound();
+  const closeBAFORoundMutation = useCloseBAFORound();
+  const updateBAFORoundMutation = useUpdateBAFORound();
+  const awardFromBAFOMutation = useAwardFromBAFO();
 
   const updateMutation = useUpdateRFP();
   const publishMutation = usePublishRFP();
@@ -222,8 +233,8 @@ export default function RFPDetailPage() {
     }));
   }, [proposals, id]);
 
-  // Shortlisted proposals for BAFO
-  const shortlistedProposals = useMemo(() => {
+  // Shortlisted proposals for BAFO (from local proposals data, fallback)
+  const shortlistedProposals: ShortlistedProposal[] = useMemo(() => {
     return proposals
       .filter(p => p.status === 'SHORTLISTED')
       .map(p => ({
@@ -234,6 +245,133 @@ export default function RFPDetailPage() {
         weighted_score: p.total_score || 0,
       }));
   }, [proposals]);
+
+  // Convert Q&A data for the component
+  const questions: RFPQuestion[] = useMemo(() => {
+    return qaData.map(qa => ({
+      id: qa.id,
+      rfp_id: qa.rfp_id,
+      supplier_id: qa.supplier_id,
+      supplier_name: qa.supplier_name,
+      asked_by_id: qa.asked_by_id,
+      asked_by_name: qa.asked_by_name,
+      question: qa.question,
+      answer: qa.answer,
+      answered_by_id: qa.answered_by_id,
+      answered_by_name: qa.answered_by_name,
+      answered_at: qa.answered_at,
+      visibility: qa.visibility,
+      visibility_display: qa.visibility_display,
+      is_published: qa.is_published,
+      published_at: qa.published_at,
+      created_at: qa.created_at,
+      updated_at: qa.updated_at,
+      requires_amendment: qa.requires_amendment,
+      amendment_note: qa.amendment_note,
+      amendment_version: qa.amendment_version,
+      previous_answers: qa.previous_answers,
+    }));
+  }, [qaData]);
+
+  // Convert BAFO round data for the component
+  const currentBAFORound: BAFORound | null = useMemo(() => {
+    if (!bafoCurrentRound) return null;
+    return {
+      id: bafoCurrentRound.id,
+      rfp_id: bafoCurrentRound.rfp_id,
+      round_number: bafoCurrentRound.round_number,
+      status: bafoCurrentRound.status,
+      opened_at: bafoCurrentRound.opened_at,
+      deadline: bafoCurrentRound.deadline,
+      closed_at: bafoCurrentRound.closed_at,
+      instructions: bafoCurrentRound.instructions,
+      focus_areas: bafoCurrentRound.focus_areas,
+      responses: bafoCurrentRound.responses.map(r => ({
+        id: r.id,
+        bafo_round_id: r.bafo_round_id,
+        proposal_id: r.proposal_id,
+        supplier_id: r.supplier_id,
+        supplier_name: r.supplier_name,
+        status: r.status,
+        original_amount: r.original_amount,
+        revised_amount: r.revised_amount,
+        response_data: r.response_data,
+        notes: r.notes,
+        submitted_at: r.submitted_at,
+        created_at: r.created_at,
+      })),
+      created_at: bafoCurrentRound.created_at,
+      created_by_name: bafoCurrentRound.created_by_name,
+    };
+  }, [bafoCurrentRound]);
+
+  const previousBAFORounds: BAFORound[] = useMemo(() => {
+    return bafoPreviousRounds.map(round => ({
+      id: round.id,
+      rfp_id: round.rfp_id,
+      round_number: round.round_number,
+      status: round.status,
+      opened_at: round.opened_at,
+      deadline: round.deadline,
+      closed_at: round.closed_at,
+      instructions: round.instructions,
+      focus_areas: round.focus_areas,
+      responses: round.responses.map(r => ({
+        id: r.id,
+        bafo_round_id: r.bafo_round_id,
+        proposal_id: r.proposal_id,
+        supplier_id: r.supplier_id,
+        supplier_name: r.supplier_name,
+        status: r.status,
+        original_amount: r.original_amount,
+        revised_amount: r.revised_amount,
+        response_data: r.response_data,
+        notes: r.notes,
+        submitted_at: r.submitted_at,
+        created_at: r.created_at,
+      })),
+      created_at: round.created_at,
+      created_by_name: round.created_by_name,
+    }));
+  }, [bafoPreviousRounds]);
+
+  // Evaluation summary data for EvaluationSummaryCard
+  const evaluationSummaryProposals: ProposalScoreSummary[] = useMemo(() => {
+    return proposals
+      .filter(p => p.status !== 'REJECTED')
+      .map((p, index) => ({
+        proposal_id: p.id,
+        supplier_id: p.supplier_id || '',
+        supplier_name: p.supplier_name,
+        proposed_amount: p.proposed_amount,
+        technical_score: p.technical_score || 0,
+        pricing_score: p.financial_score || 0,
+        management_score: 75, // Mock value - would come from API
+        overall_score: p.total_score || 0,
+        rank: index + 1,
+        evaluators_completed: evaluationTeam.filter(m => m.has_submitted_scores).length,
+        total_evaluators: evaluationTeam.length,
+        is_shortlisted: p.status === 'SHORTLISTED',
+      }))
+      .sort((a, b) => b.overall_score - a.overall_score)
+      .map((p, index) => ({ ...p, rank: index + 1 }));
+  }, [proposals, evaluationTeam]);
+
+  const evaluationStats: EvaluationStats = useMemo(() => {
+    const scoredProposals = evaluationSummaryProposals.filter(p => p.overall_score > 0);
+    const scores = scoredProposals.map(p => p.overall_score);
+
+    return {
+      total_proposals: proposals.length,
+      scored_proposals: scoredProposals.length,
+      average_score: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0,
+      highest_score: scores.length > 0 ? Math.max(...scores) : 0,
+      lowest_score: scores.length > 0 ? Math.min(...scores) : 0,
+      score_spread: scores.length > 0 ? Math.max(...scores) - Math.min(...scores) : 0,
+      evaluators_completed: evaluationTeam.filter(m => m.has_submitted_scores).length,
+      total_evaluators: evaluationTeam.length,
+    };
+  }, [proposals.length, evaluationSummaryProposals, evaluationTeam]);
 
   if (isLoading) {
     return (
@@ -324,90 +462,133 @@ export default function RFPDetailPage() {
   };
 
   // Q&A handlers
-  const handleAnswerQuestion = async (questionId: string, answer: string, requiresAmendment: boolean, amendmentNote?: string) => {
-    setQuestions(prev =>
-      prev.map(q => q.id === questionId ? {
-        ...q,
-        answer,
-        answered_by: 'Current User',
-        answered_at: new Date().toISOString(),
-        requires_amendment: requiresAmendment,
-        amendment_note: amendmentNote || null,
-      } : q)
-    );
-  };
-
-  const handlePublishAnswer = async (questionId: string) => {
-    setQuestions(prev =>
-      prev.map(q => q.id === questionId ? {
-        ...q,
-        is_published: true,
-        published_at: new Date().toISOString(),
-      } : q)
-    );
-  };
-
-  const handleUnpublishAnswer = async (questionId: string) => {
-    setQuestions(prev =>
-      prev.map(q => q.id === questionId ? {
-        ...q,
-        is_published: false,
-        published_at: null,
-      } : q)
-    );
-  };
-
-  // BAFO handlers
-  const handleStartBAFO = async (deadline: string, instructions: string, invitedSupplierIds: string[]) => {
-    const invitations = shortlistedProposals
-      .filter(p => invitedSupplierIds.includes(p.supplier_id))
-      .map(p => ({
-        id: `inv-${p.id}`,
-        supplier_id: p.supplier_id,
-        supplier_name: p.supplier_name,
-        proposal_id: p.id,
-        original_amount: p.proposed_amount,
-        bafo_amount: null,
-        submitted_at: null,
-        notes: null,
-      }));
-
-    setBAFORound({
-      id: `bafo-${Date.now()}`,
-      rfp_id: id || '',
-      round_number: 1,
-      status: 'ACTIVE',
-      started_at: new Date().toISOString(),
-      deadline,
-      closed_at: null,
-      instructions,
-      invitations,
+  const handleAnswerQuestion = async (
+    questionId: string,
+    answer: string,
+    visibility: QAVisibility,
+    requiresAmendment?: boolean,
+    amendmentNote?: string
+  ) => {
+    if (!id) return;
+    await answerQuestionMutation.mutateAsync({
+      rfpId: id,
+      questionId,
+      answer,
+      visibility: visibility as QAVisibilityAPI,
+      requiresAmendment,
+      amendmentNote,
     });
   };
 
-  const handleCloseBAFO = async () => {
-    setBAFORound(prev => prev ? { ...prev, status: 'CLOSED', closed_at: new Date().toISOString() } : null);
+  const handlePublishAnswer = async (questionId: string, visibility: QAVisibility) => {
+    if (!id) return;
+    await publishAnswerMutation.mutateAsync({
+      rfpId: id,
+      questionId,
+      visibility: visibility as QAVisibilityAPI,
+    });
+  };
+
+  const handleUnpublishAnswer = async (questionId: string) => {
+    if (!id) return;
+    await unpublishAnswerMutation.mutateAsync({
+      rfpId: id,
+      questionId,
+    });
+  };
+
+  const handleEditAnswer = async (
+    questionId: string,
+    answer: string,
+    visibility: QAVisibility,
+    amendmentNote?: string
+  ) => {
+    if (!id) return;
+    await editAnswerMutation.mutateAsync({
+      rfpId: id,
+      questionId,
+      answer,
+      visibility: visibility as QAVisibilityAPI,
+      amendmentNote,
+    });
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!id) return;
+    await deleteQuestionMutation.mutateAsync({
+      rfpId: id,
+      questionId,
+    });
+  };
+
+  // BAFO handlers
+  const handleStartBAFO = async (
+    deadline: string,
+    instructions: string,
+    focusAreas: string[],
+    invitedProposalIds: string[]
+  ) => {
+    if (!id) return;
+    await createBAFORoundMutation.mutateAsync({
+      rfpId: id,
+      deadline,
+      instructions,
+      focusAreas,
+      proposalIds: invitedProposalIds,
+    });
+  };
+
+  const handleOpenBAFO = async (roundId: string) => {
+    await openBAFORoundMutation.mutateAsync(roundId);
+  };
+
+  const handleCloseBAFO = async (roundId: string) => {
+    await closeBAFORoundMutation.mutateAsync(roundId);
+  };
+
+  const handleUpdateBAFO = async (
+    roundId: string,
+    deadline: string,
+    instructions: string,
+    focusAreas: string[]
+  ) => {
+    await updateBAFORoundMutation.mutateAsync({
+      roundId,
+      deadline,
+      instructions,
+      focusAreas,
+    });
   };
 
   const handleAwardFromBAFO = async (proposalId: string) => {
-    setBAFORound(prev => prev ? { ...prev, status: 'AWARDED' } : null);
+    await awardFromBAFOMutation.mutateAsync(proposalId);
+  };
+
+  const handleViewBAFOResponse = (response: BAFOResponse) => {
+    setSelectedBAFOResponse(response);
+    setBAFOResponseDialogOpen(true);
   };
 
   // Proposal handlers
-  const handleViewProposal = (proposalId: string) => {
-    console.log('View proposal:', proposalId);
+  const handleViewProposal = (proposal: Proposal) => {
+    console.log('View proposal:', proposal.id);
+    // Navigate to proposal detail or open modal
   };
 
   const handleShortlistProposal = async (proposalId: string) => {
     console.log('Shortlist proposal:', proposalId);
   };
 
-  const handleRejectProposal = async (proposalId: string) => {
-    console.log('Reject proposal:', proposalId);
+  const handleRejectProposal = async (proposalId: string, reason: string) => {
+    console.log('Reject proposal:', proposalId, reason);
   };
 
-  const handleDownloadDocuments = (proposalId: string) => {
-    console.log('Download documents:', proposalId);
+  const handleAwardProposal = async (proposalId: string) => {
+    console.log('Award proposal:', proposalId);
+  };
+
+  const handleRequestBAFO = async (proposalId: string) => {
+    console.log('Request BAFO:', proposalId);
   };
 
   const formatCurrency = (value: string | null, currency: string) => {
@@ -882,19 +1063,31 @@ export default function RFPDetailPage() {
         {showProposals && (
           <TabsContent value="proposals">
             <ProposalsList
+              rfpId={id || ''}
               proposals={proposalsForList}
               onViewProposal={handleViewProposal}
               onShortlistProposal={handleShortlistProposal}
-              onRejectProposal={handleRejectProposal}
-              onDownloadDocuments={handleDownloadDocuments}
-              isOwner={true}
+              onDisqualifyProposal={handleRejectProposal}
+              onAwardProposal={handleAwardProposal}
+              onRequestBAFO={handleRequestBAFO}
             />
           </TabsContent>
         )}
 
         {/* Evaluation/Scoring Tab */}
         {showEvaluationTabs && (
-          <TabsContent value="evaluation">
+          <TabsContent value="evaluation" className="space-y-6">
+            {/* Evaluation Summary Dashboard */}
+            <EvaluationSummaryCard
+              proposals={evaluationSummaryProposals}
+              stats={evaluationStats}
+              onViewDetails={(proposalId) => console.log('View proposal:', proposalId)}
+              onShortlist={(proposalId) => handleShortlistProposal(proposalId)}
+              isEvaluationComplete={evaluationTeam.every(m => m.has_submitted_scores)}
+              canFinalize={rfp.status === 'UNDER_EVALUATION'}
+            />
+
+            {/* Scoring Matrix */}
             <ScoringMatrix
               criteria={scoringCriteria}
               proposals={proposalsForScoring}
@@ -929,7 +1122,11 @@ export default function RFPDetailPage() {
             onAnswerQuestion={handleAnswerQuestion}
             onPublishAnswer={handlePublishAnswer}
             onUnpublishAnswer={handleUnpublishAnswer}
+            onEditAnswer={handleEditAnswer}
+            onDeleteQuestion={handleDeleteQuestion}
             isOwner={true}
+            isLoading={qaLoading}
+            rfpStatus={rfp.status}
           />
         </TabsContent>
 
@@ -938,13 +1135,18 @@ export default function RFPDetailPage() {
           <TabsContent value="bafo">
             <BAFOPanel
               rfpId={rfp.id}
-              currentRound={bafoRound}
-              previousRounds={[]}
-              shortlistedProposals={shortlistedProposals}
+              currentRound={currentBAFORound}
+              previousRounds={previousBAFORounds}
+              shortlistedProposals={bafoShortlistedProposals.length > 0 ? bafoShortlistedProposals : shortlistedProposals}
               onStartBAFO={handleStartBAFO}
+              onOpenBAFO={handleOpenBAFO}
               onCloseBAFO={handleCloseBAFO}
+              onUpdateBAFO={handleUpdateBAFO}
               onAwardFromBAFO={handleAwardFromBAFO}
+              onViewResponse={handleViewBAFOResponse}
               isOwner={true}
+              isLoading={bafoLoading}
+              rfpStatus={rfp.status}
             />
           </TabsContent>
         )}
@@ -1007,6 +1209,18 @@ export default function RFPDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* BAFO Response Detail Dialog */}
+      {selectedBAFOResponse && (
+        <BAFOResponseView
+          response={selectedBAFOResponse}
+          open={bafoResponseDialogOpen}
+          onOpenChange={(open) => {
+            setBAFOResponseDialogOpen(open);
+            if (!open) setSelectedBAFOResponse(null);
+          }}
+        />
+      )}
     </motion.div>
   );
 }

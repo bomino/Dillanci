@@ -24,6 +24,10 @@ Dillanci is a comprehensive enterprise procurement platform designed to streamli
 - **Documents** - Document management with versioning
 - **Reports** - Dashboard KPIs and analytics
 - **Notifications** - In-app notification system with real-time updates
+- **Admin Panel** - User management, roles & permissions, workflow configuration
+
+### Documentation
+- **[Workflow Guide](docs/WORKFLOW_DOCUMENTATION.md)** - Detailed procurement workflows including REQ→PO conversion
 
 ## Tech Stack
 
@@ -351,6 +355,8 @@ The API follows REST conventions with the following base endpoints:
 | Contracts | `/api/v1/contracts/` | Contract management |
 | Reports | `/api/v1/reports/` | Reports & analytics |
 | Notifications | `/api/v1/notifications/` | In-app notifications |
+| Comments | `/api/v1/comments/` | Generic comments for any object |
+| Attachments | `/api/v1/attachments/` | File attachments for any object |
 
 ### Notifications API
 
@@ -362,6 +368,23 @@ The API follows REST conventions with the following base endpoints:
 | `/api/v1/notifications/mark-all-read/` | POST | Mark all notifications as read |
 | `/api/v1/notifications/{id}/archive/` | POST | Archive a notification |
 | `/api/v1/notifications/archive-all-read/` | POST | Archive all read notifications |
+
+### Comments API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/comments/?object_type=xxx&object_id=yyy` | GET | List comments for an object |
+| `/api/v1/comments/` | POST | Create a new comment |
+| `/api/v1/comments/{id}/` | PATCH | Update a comment (author only) |
+| `/api/v1/comments/{id}/` | DELETE | Delete a comment (author only) |
+
+### Attachments API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/attachments/?object_type=xxx&object_id=yyy` | GET | List attachments for an object |
+| `/api/v1/attachments/` | POST | Upload a new attachment (multipart/form-data) |
+| `/api/v1/attachments/{id}/` | DELETE | Delete an attachment (uploader only) |
 
 ## Testing
 

@@ -336,6 +336,25 @@ export type RFQStatus =
   | 'AWARDED'
   | 'CANCELLED';
 
+export type RFQBidType = 'OPEN' | 'SEALED' | 'INVITED';
+
+export type RFQPaymentTerms =
+  | 'NET15'
+  | 'NET30'
+  | 'NET45'
+  | 'NET60'
+  | 'NET90'
+  | 'DUE_ON_RECEIPT'
+  | 'ADVANCE'
+  | 'MILESTONE'
+  | 'OTHER';
+
+export interface EvaluationCriterion {
+  name: string;
+  weight: number;
+  description?: string;
+}
+
 export interface RFQLine {
   id: string;
   rfq: string;
@@ -348,20 +367,83 @@ export interface RFQLine {
   created_at: string;
 }
 
+export interface SupplierInvitation {
+  id: string;
+  rfq: string;
+  supplier: string;
+  supplier_name: string;
+  invited_by: string;
+  invited_by_name: string;
+  invited_at: string;
+  status: 'PENDING' | 'VIEWED' | 'BID_SUBMITTED' | 'DECLINED';
+  status_display: string;
+  viewed_at: string | null;
+  responded_at: string | null;
+  decline_reason: string;
+}
+
 export interface RFQ {
   id: string;
   number: string;
   organization: string;
+  organization_name?: string;
   created_by: string;
+  created_by_name?: string;
+  created_by_email?: string;
   title: string;
   description: string;
   status: RFQStatus;
+  status_display?: string;
+  bid_type: RFQBidType;
+  bid_type_display?: string;
+  // Buyer Contact
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone: string;
+  department: string;
+  // Project Background
+  project_background: string;
+  // Critical Timelines
+  issue_date: string | null;
+  qa_deadline: string | null;
+  submission_deadline: string | null;
+  expected_award_date: string | null;
   open_date: string | null;
   close_date: string | null;
   awarded_date: string | null;
-  awarded_supplier: string | null;
+  // Commercial Terms
+  payment_terms: RFQPaymentTerms;
+  payment_terms_display?: string;
+  payment_terms_notes: string;
+  contract_duration_months: number | null;
+  contract_renewal_options: string;
+  currency: string;
+  // Delivery Requirements
+  delivery_address: string;
+  delivery_terms: string;
+  required_delivery_date: string | null;
+  // Evaluation Criteria
+  evaluation_criteria: EvaluationCriterion[] | null;
+  required_certifications: string;
+  required_attachments_description: string;
+  // Terms and Conditions
+  terms_and_conditions: string;
+  nda_required: boolean;
+  // Financial
   total_amount?: string;
+  // Award Info
+  awarded_supplier: string | null;
+  awarded_supplier_name?: string;
+  awarded_bid: string | null;
+  // Relations
+  requisition: string | null;
+  requisition_number?: string;
   lines?: RFQLine[];
+  invitations?: SupplierInvitation[];
+  // Counts for list view
+  invitation_count?: number;
+  bid_count?: number;
+  // Timestamps
   created_at: string;
   updated_at: string;
 }
@@ -550,21 +632,337 @@ export interface Contract {
   updated_at: string;
 }
 
-// RFP Types (Request for Proposal)
+// =============================================================================
+// RFP Types (Request for Proposal) - Enhanced for comprehensive RFP workflow
+// =============================================================================
+
 export type RFPStatus =
   | 'DRAFT'
   | 'PUBLISHED'
-  | 'UNDER_EVALUATION'
-  | 'SHORTLISTED'
+  | 'EVALUATION'
+  | 'UNDER_EVALUATION'  // Backward compatibility alias for EVALUATION
+  | 'BAFO'
+  | 'SHORTLISTED'       // Backward compatibility alias
+  | 'CLOSED'
   | 'AWARDED'
   | 'CANCELLED';
 
-export type RFPCategory =
-  | 'GOODS'
-  | 'SERVICES'
-  | 'WORKS'
-  | 'CONSULTING';
+// Backward compatibility alias
+export type RFPCategory = 'GOODS' | 'SERVICES' | 'WORKS' | 'CONSULTING';
 
+export type RFPType = 'SERVICES' | 'GOODS' | 'COMBINED' | 'WORKS' | 'CONSULTING';
+
+export type RFPBiddingType = 'OPEN' | 'SEALED' | 'MULTI_ROUND';
+
+export type RFPVisibility = 'INVITED' | 'PUBLIC';
+
+export type IPOwnership = 'CLIENT' | 'VENDOR' | 'SHARED' | 'NEGOTIABLE';
+
+export type RFPSectionType =
+  | 'ADMINISTRATIVE'
+  | 'TECHNICAL'
+  | 'MANAGEMENT'
+  | 'PRICING'
+  | 'TERMS'
+  | 'QUALIFICATIONS';
+
+export type RFPQuestionType =
+  | 'TEXT'
+  | 'TEXTAREA'
+  | 'SINGLE_CHOICE'
+  | 'MULTI_CHOICE'
+  | 'NUMBER'
+  | 'DATE'
+  | 'FILE'
+  | 'RATING';
+
+export type RFPInvitationStatus =
+  | 'PENDING'
+  | 'VIEWED'
+  | 'PROPOSAL_SUBMITTED'
+  | 'DECLINED'
+  | 'DISQUALIFIED';
+
+export type IntentToBid = 'YES' | 'NO' | 'UNDECIDED';
+
+export type ProposalStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'SHORTLISTED'
+  | 'BAFO_REQUESTED'
+  | 'BAFO_SUBMITTED'
+  | 'AWARDED'
+  | 'NOT_AWARDED'
+  | 'WITHDRAWN'
+  | 'DISQUALIFIED';
+
+export type EvaluatorRole = 'LEAD' | 'TECHNICAL' | 'PRICING' | 'GENERAL';
+
+export type BAFORoundStatus = 'DRAFT' | 'OPEN' | 'CLOSED';
+
+export type QAVisibility = 'PRIVATE' | 'PUBLIC' | 'ALL_BIDDERS';
+
+// RFP Question with compliance tracking
+export interface RFPQuestion {
+  id: string;
+  section: string;
+  question_number: number;
+  question_text: string;
+  question_type: RFPQuestionType;
+  options: string[] | null;
+  is_required: boolean;
+  max_score: string;
+  scoring_guidance: string;
+  order: number;
+  // Compliance tracking fields
+  is_mandatory_attachment: boolean;
+  attachment_type: string;
+  min_attachments: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// RFP Section with nested questions
+export interface RFPSection {
+  id: string;
+  rfp: string;
+  section_number: number;
+  title: string;
+  section_type: RFPSectionType;
+  weight: string;
+  instructions: string;
+  is_scorable: boolean;
+  order: number;
+  questions: RFPQuestion[];
+  question_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// RFP Line Item for pricing
+export interface RFPLineItem {
+  id: string;
+  rfp: string;
+  section: string | null;
+  line_number: number;
+  description: string;
+  quantity: string;
+  unit_of_measure: string;
+  target_unit_price: string | null;
+  catalog_item: string | null;
+  catalog_item_name?: string;
+  extended_amount: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Scoring Criteria with hierarchy
+export interface ScoringCriteria {
+  id: string;
+  rfp: string;
+  name: string;
+  description: string;
+  weight: string;
+  section: string | null;
+  parent: string | null;
+  max_score: string;
+  order: number;
+  sub_criteria: ScoringCriteria[];
+  created_at: string;
+  updated_at: string;
+}
+
+// RFP Invitation with intent tracking
+export interface RFPInvitation {
+  id: string;
+  rfp: string;
+  supplier: string;
+  supplier_name: string;
+  invited_by: string;
+  invited_by_name: string;
+  invited_at: string;
+  status: RFPInvitationStatus;
+  status_display: string;
+  viewed_at: string | null;
+  responded_at: string | null;
+  intent_to_bid: IntentToBid | null;
+  decline_reason: string;
+  disqualified: boolean;
+  disqualification_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Question Response in a proposal
+export interface QuestionResponse {
+  id: string;
+  proposal: string;
+  question: string;
+  question_text: string;
+  question_type: RFPQuestionType;
+  answer_text: string;
+  answer_choice: string[] | null;
+  answer_number: string | null;
+  answer_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Proposal Line Item
+export interface ProposalLineItem {
+  id: string;
+  proposal: string;
+  rfp_line_item: string;
+  rfp_line_description: string;
+  quantity: string;
+  unit_price: string;
+  extended_price: string;
+  lead_time_days: number | null;
+  manufacturer: string;
+  part_number: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Proposal Section
+export interface ProposalSection {
+  id: string;
+  proposal: string;
+  rfp_section: string;
+  section_title: string;
+  section_score: string | null;
+  evaluator_comments: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Proposal
+export interface Proposal {
+  id: string;
+  rfp: string;
+  rfp_number: string;
+  rfp_title: string;
+  supplier: string;
+  supplier_name: string;
+  submitted_by: string;
+  submitted_by_name: string;
+  proposal_number: string;
+  status: ProposalStatus;
+  status_display: string;
+  submitted_at: string | null;
+  revision_number: number;
+  is_latest: boolean;
+  technical_score: string | null;
+  management_score: string | null;
+  pricing_score: string | null;
+  overall_score: string | null;
+  rank: number | null;
+  valid_until: string | null;
+  notes: string;
+  total_amount: string;
+  question_responses: QuestionResponse[];
+  line_items: ProposalLineItem[];
+  sections: ProposalSection[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Evaluation Team Member
+export interface EvaluationTeam {
+  id: string;
+  rfp: string;
+  evaluator: string;
+  evaluator_name: string;
+  evaluator_email: string;
+  role: EvaluatorRole;
+  role_display: string;
+  assigned_sections: string[];
+  assigned_at: string;
+  assigned_by: string;
+  assigned_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Evaluation Score
+export interface EvaluationScore {
+  id: string;
+  proposal: string;
+  evaluator: string;
+  evaluator_name: string;
+  criteria: string | null;
+  section: string | null;
+  question: string | null;
+  score: string;
+  max_score: string;
+  score_percentage: string;
+  comments: string;
+  is_final: boolean;
+  scored_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// BAFO Response
+export interface BAFOResponse {
+  id: string;
+  bafo_round: string;
+  proposal: string;
+  proposal_number: string;
+  supplier_name: string;
+  status: 'DRAFT' | 'SUBMITTED';
+  status_display: string;
+  submitted_at: string | null;
+  response_data: Record<string, unknown> | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// BAFO Round
+export interface BAFORound {
+  id: string;
+  rfp: string;
+  rfp_number: string;
+  round_number: number;
+  status: BAFORoundStatus;
+  status_display: string;
+  opened_at: string | null;
+  deadline: string | null;
+  closed_at: string | null;
+  instructions: string;
+  focus_areas: string[] | null;
+  created_by: string;
+  created_by_name: string;
+  responses: BAFOResponse[];
+  response_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// RFP Q&A
+export interface RFPQA {
+  id: string;
+  rfp: string;
+  supplier: string | null;
+  supplier_name: string | null;
+  asked_by: string;
+  asked_by_name: string;
+  question: string;
+  answer: string;
+  answered_by: string | null;
+  answered_by_name: string | null;
+  answered_at: string | null;
+  visibility: QAVisibility;
+  visibility_display: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Backward compatibility interfaces for existing pages
 export interface RFPRequirement {
   id: string;
   rfp: string;
@@ -586,29 +984,103 @@ export interface RFPEvaluationCriteria {
   max_score: number;
 }
 
+// Main RFP interface with all essential sections
 export interface RFP {
   id: string;
   number: string;
   organization: string;
+  organization_name?: string;
   created_by: string;
-  created_by_name?: string;
+  created_by_name: string;
   title: string;
   description: string;
-  category: RFPCategory;
   status: RFPStatus;
+  status_display?: string;
+  rfp_type: RFPType;
+  estimated_value: string | null;
+  bidding_type: RFPBiddingType;
+  visibility: RFPVisibility;
+  requisition: string | null;
+  notes?: string;
+
+  // Backward compatibility fields
+  category?: RFPCategory;
+  submission_deadline?: string | null;
+  evaluation_deadline?: string | null;
+  requirements?: RFPRequirement[];
+  evaluation_criteria?: RFPEvaluationCriteria[];
+
+  // Project Overview fields (Essential RFP Section 1)
+  executive_summary?: string;
+  current_state_description?: string;
+  future_state_goals?: string;
+  organization_context?: string;
+
+  // Timeline fields (Essential RFP Section 4)
+  publish_date: string | null;
+  question_deadline: string | null;
+  response_deadline: string | null;
+  evaluation_start_date?: string | null;
+  award_target_date?: string | null;
+  qa_session_date?: string | null;
+  shortlist_announcement_date?: string | null;
+  contract_start_date?: string | null;
+  contract_end_date?: string | null;
+
+  // Budget Framework fields (Essential RFP Section 5)
   budget_min: string | null;
   budget_max: string | null;
   currency: string;
-  publish_date: string | null;
-  submission_deadline: string | null;
-  evaluation_deadline: string | null;
-  awarded_date: string | null;
+
+  // Terms & Conditions fields (Essential RFP Section 7)
+  nda_required?: boolean;
+  payment_terms?: string;
+  ip_ownership?: IPOwnership;
+  ip_ownership_display?: string;
+  insurance_requirements?: string;
+  confidentiality_terms?: string;
+
+  // Award info
   awarded_supplier: string | null;
-  awarded_supplier_name?: string;
-  requirements?: RFPRequirement[];
-  evaluation_criteria?: RFPEvaluationCriteria[];
+  awarded_supplier_name?: string | null;
+  awarded_proposal?: string | null;
+  awarded_date: string | null;
+
+  // Related data (new structure)
+  sections?: RFPSection[];
+  questions?: RFPQuestion[];
+  criteria?: ScoringCriteria[];
+  scoring_criteria?: ScoringCriteria[];
+  line_items?: RFPLineItem[];
+  invitations?: RFPInvitation[];
+  total_section_weight?: string;
+  proposal_count?: number;
+  invitation_count?: number;
+
+  // Timestamps
   created_at: string;
   updated_at: string;
+}
+
+// RFP List item (lightweight for list views)
+export interface RFPListItem {
+  id: string;
+  number: string;
+  organization: string;
+  organization_name: string;
+  title: string;
+  status: RFPStatus;
+  status_display: string;
+  rfp_type: RFPType;
+  estimated_value: string | null;
+  budget_min: string | null;
+  budget_max: string | null;
+  currency: string;
+  response_deadline: string | null;
+  award_target_date: string | null;
+  proposal_count: number;
+  invitation_count: number;
+  created_at: string;
 }
 
 // Dashboard KPI Types
@@ -685,7 +1157,8 @@ export interface InvoiceFilters extends PaginationParams {
 
 export interface RFPFilters extends PaginationParams {
   status?: RFPStatus;
-  category?: RFPCategory;
+  rfp_type?: RFPType;
+  category?: RFPCategory;  // Backward compatibility
   search?: string;
 }
 
@@ -696,16 +1169,36 @@ export interface RFPFilters extends PaginationParams {
 export type NotificationStatus = 'UNREAD' | 'READ' | 'ARCHIVED';
 
 export type NotificationType =
-  | 'APPROVAL_REQUIRED'      // Document needs your approval
-  | 'APPROVAL_COMPLETED'     // Your document was approved
-  | 'APPROVAL_REJECTED'      // Your document was rejected
-  | 'DOCUMENT_SUBMITTED'     // Document submitted for review
-  | 'BID_RECEIVED'           // New bid on your RFQ/RFP
-  | 'CONTRACT_EXPIRING'      // Contract approaching expiration
-  | 'INVOICE_MATCHED'        // Invoice passed 3-way matching
-  | 'GOODS_RECEIVED'         // Goods receipt posted
-  | 'BUDGET_ALERT'           // Budget threshold reached
-  | 'SYSTEM_ALERT';          // System-wide announcements
+  | 'APPROVAL_REQUIRED'       // Document needs your approval
+  | 'APPROVAL_COMPLETED'      // Your document was approved
+  | 'APPROVAL_REJECTED'       // Your document was rejected
+  | 'DOCUMENT_SUBMITTED'      // Document submitted for review
+  | 'BID_RECEIVED'            // New bid on your RFQ/RFP
+  | 'CONTRACT_EXPIRING'       // Contract approaching expiration
+  | 'INVOICE_MATCHED'         // Invoice passed 3-way matching
+  | 'GOODS_RECEIVED'          // Goods receipt posted
+  | 'BUDGET_ALERT'            // Budget threshold reached
+  | 'SYSTEM_ALERT'            // System-wide announcements
+  // RFP-specific notification types
+  | 'RFP_PUBLISHED'           // RFP published and invitations sent
+  | 'RFP_INVITATION'          // Invited to respond to an RFP
+  | 'RFP_DEADLINE_REMINDER'   // RFP submission deadline approaching
+  | 'RFP_QA_ANSWERED'         // Q&A question answered
+  | 'PROPOSAL_RECEIVED'       // New proposal submitted
+  | 'PROPOSAL_SHORTLISTED'    // Your proposal was shortlisted
+  | 'PROPOSAL_AWARDED'        // Your proposal was awarded
+  | 'PROPOSAL_NOT_AWARDED'    // Your proposal was not selected
+  | 'BAFO_REQUESTED'          // BAFO round opened, action required
+  | 'BAFO_RECEIVED'           // BAFO response received
+  | 'RFP_EVALUATION_COMPLETE' // All evaluators finished scoring
+  | 'RFP_CLOSED'              // RFP has been closed
+  // RFQ-specific notification types
+  | 'RFQ_PUBLISHED'           // RFQ published
+  | 'RFQ_INVITATION'          // Invited to respond to an RFQ
+  | 'RFQ_DEADLINE_REMINDER'   // RFQ deadline approaching
+  | 'QUOTE_RECEIVED'          // New quote received
+  | 'RFQ_AWARDED'             // RFQ awarded
+  | 'RFQ_CLOSED';             // RFQ closed
 
 export type NotificationPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 

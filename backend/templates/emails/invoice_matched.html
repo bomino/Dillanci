@@ -1,0 +1,101 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Invoice Matched - {{ invoice_number }}{% endblock %}
+
+{% block content %}
+<h1 class="email-title">Invoice Successfully Matched</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        An invoice has been successfully matched against a purchase order and is ready for
+        {% if requires_approval %}approval{% else %}payment processing{% endif %}.
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">Invoice Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ invoice_number }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Invoice Amount</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ currency }} {{ invoice_amount|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">PO Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ po_number }}</td>
+        </tr>
+        {% if receipt_number %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Receipt Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ receipt_number }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Match Type</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ match_type }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Due Date</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ due_date }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge status-approved">Matched</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if variance_amount and variance_amount != 0 %}
+<div class="email-body" style="background-color: #fef3c7; padding: 12px; border-radius: 4px; margin: 16px 0;">
+    <p style="margin: 0; color: #92400e;">
+        <strong>Note:</strong> There is a {{ currency }} {{ variance_amount|floatformat:2 }} variance
+        between the invoice and PO amount. This may require review.
+    </p>
+</div>
+{% endif %}
+
+{% if matched_lines %}
+<div class="email-body">
+    <p><strong>Matched Lines:</strong></p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="border: 1px solid #e5e5e5; border-radius: 4px; font-size: 13px;">
+        <thead>
+            <tr style="background-color: #fafaf9;">
+                <th style="text-align: left; border-bottom: 1px solid #e5e5e5;">Description</th>
+                <th style="text-align: right; border-bottom: 1px solid #e5e5e5;">Invoice Amt</th>
+                <th style="text-align: right; border-bottom: 1px solid #e5e5e5;">PO Amt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in matched_lines %}
+            <tr>
+                <td style="border-bottom: 1px solid #e5e5e5;">{{ line.description }}</td>
+                <td style="text-align: right; border-bottom: 1px solid #e5e5e5;">{{ currency }} {{ line.invoice_amount|floatformat:2 }}</td>
+                <td style="text-align: right; border-bottom: 1px solid #e5e5e5;">{{ currency }} {{ line.po_amount|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">
+        {% if requires_approval %}Review &amp; Approve{% else %}View Invoice{% endif %}
+    </a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        You're receiving this email because you're involved in the invoice approval workflow.
+    </p>
+</div>
+{% endblock %}

@@ -66,7 +66,7 @@ from .serializers import (
     ScoringCriteriaSerializer,
     ShortlistProposalSerializer,
 )
-from .services import ScoringService
+from .services import RFPNotificationService, ScoringService
 
 
 class RFPViewSet(viewsets.ModelViewSet):
@@ -148,7 +148,11 @@ class RFPViewSet(viewsets.ModelViewSet):
     def publish(self, request, pk=None):
         """Publish the RFP (DRAFT -> PUBLISHED)."""
         rfp = self.get_object()
-        return self._handle_workflow_action(rfp, rfp.publish)
+        response = self._handle_workflow_action(rfp, rfp.publish)
+        if response.status_code == 200:
+            # Send notifications to invited suppliers
+            RFPNotificationService.notify_rfp_published(rfp)
+        return response
 
     @action(detail=True, methods=['post'])
     def start_evaluation(self, request, pk=None):
@@ -190,7 +194,14 @@ class RFPViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return self._handle_workflow_action(rfp, rfp.award, proposal)
+        response = self._handle_workflow_action(rfp, rfp.award, proposal)
+        if response.status_code == 200:
+            # Notify winning supplier
+            RFPNotificationService.notify_proposal_awarded(proposal)
+            # Notify non-winning suppliers
+            for other_proposal in rfp.proposals.filter(status='NOT_AWARDED'):
+                RFPNotificationService.notify_proposal_not_awarded(other_proposal)
+        return response
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -468,9 +479,11 @@ class RFPViewSet(viewsets.ModelViewSet):
             answered_by=request.user,
             visibility=serializer.validated_data.get('visibility', 'ALL_BIDDERS'),
         )
+        # Notify suppliers about the answered question
+        RFPNotificationService.notify_qa_answered(qa_item)
         return Response(RFPQASerializer(qa_item).data)
 
-    @action(detail=True, methods=['get', 'post'])
+    @action(detail=True, methods=['get', 'post'], url_path='bafo-rounds')
     def bafo_rounds(self, request, pk=None):
         """
         Manage BAFO rounds.
@@ -751,6 +764,8 @@ class ProposalViewSet(viewsets.ModelViewSet):
         try:
             proposal.submit()
             proposal.refresh_from_db()
+            # Notify RFP owner about the new proposal
+            RFPNotificationService.notify_proposal_received(proposal)
             return Response(ProposalSerializer(proposal).data)
         except ValueError as e:
             return Response(
@@ -779,6 +794,8 @@ class ProposalViewSet(viewsets.ModelViewSet):
         try:
             proposal.shortlist()
             proposal.refresh_from_db()
+            # Notify supplier about shortlisting
+            RFPNotificationService.notify_proposal_shortlisted(proposal)
             return Response(ProposalSerializer(proposal).data)
         except InvalidStateTransitionError as e:
             return Response(
@@ -1008,6 +1025,8 @@ class BAFORoundViewSet(viewsets.ModelViewSet):
         try:
             bafo_round.open()
             bafo_round.refresh_from_db()
+            # Notify shortlisted suppliers about BAFO request
+            RFPNotificationService.notify_bafo_requested(bafo_round)
             return Response(BAFORoundSerializer(bafo_round).data)
         except ValueError as e:
             return Response(
@@ -1070,7 +1089,7 @@ class BAFORoundViewSet(viewsets.ModelViewSet):
         bafo_round = self.get_object()
 
         try:
-            response = bafo_round.responses.get(id=response_id)
+            bafo_response = bafo_round.responses.get(id=response_id)
         except BAFOResponse.DoesNotExist:
             return Response(
                 {'error': 'Response not found'},
@@ -1078,9 +1097,11 @@ class BAFORoundViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            response.submit()
-            response.refresh_from_db()
-            return Response(BAFOResponseSerializer(response).data)
+            bafo_response.submit()
+            bafo_response.refresh_from_db()
+            # Notify RFP owner about BAFO response
+            RFPNotificationService.notify_bafo_received(bafo_response)
+            return Response(BAFOResponseSerializer(bafo_response).data)
         except ValueError as e:
             return Response(
                 {'error': str(e)},

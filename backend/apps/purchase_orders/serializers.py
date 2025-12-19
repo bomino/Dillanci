@@ -42,6 +42,7 @@ class POLineSerializer(serializers.ModelSerializer):
             'catalog_item_sku',
             'rfq_line',
             'bid_line',
+            'proposal_line',
             'requisition_line',
             'requisition_line_id',
             'quantity_received',
@@ -96,6 +97,12 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     rfq_number = serializers.CharField(
         source='rfq.number', read_only=True
     )
+    rfp_number = serializers.CharField(
+        source='rfp.number', read_only=True
+    )
+    proposal_number = serializers.CharField(
+        source='proposal.proposal_number', read_only=True
+    )
     requisition_id = serializers.UUIDField(
         source='requisition.id', read_only=True
     )
@@ -145,6 +152,10 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'rfq',
             'rfq_number',
             'bid',
+            'rfp',
+            'rfp_number',
+            'proposal',
+            'proposal_number',
             'requisition',
             'requisition_id',
             'requisition_number',
@@ -265,3 +276,11 @@ class CreateFromRequisitionSerializer(serializers.Serializer):
 
     requisition_id = serializers.UUIDField()
     supplier_id = serializers.UUIDField()
+
+
+class CreateFromProposalSerializer(serializers.Serializer):
+    """Serializer for creating PO from awarded RFP proposal."""
+
+    proposal_id = serializers.UUIDField()
+    budget_line_id = serializers.UUIDField()
+    contract_id = serializers.UUIDField(required=False, allow_null=True)

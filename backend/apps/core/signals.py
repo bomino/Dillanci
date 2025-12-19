@@ -5,10 +5,43 @@ These signals listen to model changes and create appropriate notifications
 for users who need to take action or be informed of changes.
 """
 
+import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.core.models import Notification
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Notification Email Signal Handler
+# =============================================================================
+
+@receiver(post_save, sender=Notification)
+def queue_notification_email(sender, instance, created, **kwargs):
+    """
+    Queue an email task when a new notification is created.
+
+    This signal handler fires after any Notification is saved.
+    If the notification is newly created, it queues a Celery task
+    to send an email (respecting user preferences).
+    """
+    if not created:
+        # Only queue emails for new notifications
+        return
+
+    # Import here to avoid circular imports
+    from apps.core.tasks import send_notification_email
+
+    try:
+        # Queue the email task asynchronously
+        send_notification_email.delay(str(instance.id))
+        logger.debug(f"Email task queued for notification {instance.id}")
+    except Exception as e:
+        # Log but don't fail - the notification is still created
+        logger.error(f"Failed to queue email task for notification {instance.id}: {e}")
 
 
 def notify_approvers_for_requisition(requisition):

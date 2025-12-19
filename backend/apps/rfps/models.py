@@ -138,6 +138,114 @@ class RFP(SoftDeleteModel):
     )
     notes = models.TextField(blank=True, default='')
 
+    # =========================================================================
+    # Project Overview fields (Essential RFP Section 1)
+    # =========================================================================
+    executive_summary = models.TextField(
+        blank=True,
+        default='',
+        help_text='High-level overview of the RFP purpose and goals',
+    )
+    current_state_description = models.TextField(
+        blank=True,
+        default='',
+        help_text='Description of current pain points and challenges',
+    )
+    future_state_goals = models.TextField(
+        blank=True,
+        default='',
+        help_text='Vision of desired outcomes and success criteria',
+    )
+    organization_context = models.TextField(
+        blank=True,
+        default='',
+        help_text='Company mission, values, strategic alignment',
+    )
+
+    # =========================================================================
+    # Budget Framework fields (Essential RFP Section 5)
+    # =========================================================================
+    budget_min = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Minimum budget range',
+    )
+    budget_max = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Maximum budget range',
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='USD',
+        help_text='Currency code (e.g., USD, EUR, GBP)',
+    )
+
+    # =========================================================================
+    # Terms & Conditions fields (Essential RFP Section 7)
+    # =========================================================================
+    IP_OWNERSHIP_CHOICES = [
+        ('CLIENT', 'Client Owns All IP'),
+        ('VENDOR', 'Vendor Retains IP'),
+        ('SHARED', 'Shared/Licensed'),
+        ('NEGOTIABLE', 'To Be Negotiated'),
+    ]
+
+    nda_required = models.BooleanField(
+        default=False,
+        help_text='Whether NDA is required before viewing RFP details',
+    )
+    payment_terms = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text='Payment terms (e.g., NET30, NET60)',
+    )
+    ip_ownership = models.CharField(
+        max_length=20,
+        choices=IP_OWNERSHIP_CHOICES,
+        default='CLIENT',
+        help_text='Intellectual property ownership terms',
+    )
+    insurance_requirements = models.TextField(
+        blank=True,
+        default='',
+        help_text='Required insurance coverage and limits',
+    )
+    confidentiality_terms = models.TextField(
+        blank=True,
+        default='',
+        help_text='Confidentiality and data protection requirements',
+    )
+
+    # =========================================================================
+    # Additional Timeline fields (Essential RFP Section 4)
+    # =========================================================================
+    qa_session_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Date for Q&A session with vendors',
+    )
+    shortlist_announcement_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Date when shortlisted vendors will be announced',
+    )
+    contract_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Expected contract start date',
+    )
+    contract_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Expected contract end date',
+    )
+
     class Meta:
         db_table = 'rfp'
         verbose_name = 'Request for Proposal'
@@ -346,6 +454,25 @@ class RFPQuestion(models.Model):
         help_text='Guidance for evaluators on how to score responses',
     )
     order = models.PositiveIntegerField(default=0)
+
+    # =========================================================================
+    # Compliance tracking fields (for Compliance Matrix feature)
+    # =========================================================================
+    is_mandatory_attachment = models.BooleanField(
+        default=False,
+        help_text='If True, this is a required document/attachment for compliance',
+    )
+    attachment_type = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text='Expected file type (e.g., PDF, Excel, Word)',
+    )
+    min_attachments = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Minimum number of attachments required',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

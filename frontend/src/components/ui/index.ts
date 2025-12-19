@@ -138,3 +138,6 @@ export type { ActivityTimelineProps } from './activity-timeline';
 // Bulk Action Toolbar
 export { BulkActionToolbar } from './bulk-action-toolbar';
 export type { BulkActionToolbarProps, BulkActionResult } from './bulk-action-toolbar';
+
+// Separator
+export { Separator } from './separator';

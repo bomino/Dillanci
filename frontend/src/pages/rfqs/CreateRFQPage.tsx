@@ -1,24 +1,37 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileQuestion } from 'lucide-react';
+import { ArrowLeft, FileQuestion, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { RFQForm } from '@/components/rfqs';
 
 import { useCreateRFQ, type RFQPayload } from '@/lib/api/rfqs';
+import { useSuppliers } from '@/lib/api/suppliers';
 
 export default function CreateRFQPage() {
   const navigate = useNavigate();
   const createMutation = useCreateRFQ();
 
+  // Fetch approved suppliers for the invitation section
+  const { data: suppliersData, isLoading: suppliersLoading } = useSuppliers({
+    status: 'APPROVED',
+    page_size: 100, // Get all approved suppliers
+  });
+
   const handleSubmit = async (data: RFQPayload) => {
     try {
       const newRFQ = await createMutation.mutateAsync(data);
-      navigate(`/rfqs/${newRFQ.id}`, {
-        state: { message: 'RFQ created successfully' },
+      toast.success('RFQ created successfully', {
+        description: `RFQ ${newRFQ.number} has been created`,
       });
-    } catch (error) {
+      navigate(`/rfqs/${newRFQ.id}`);
+    } catch (error: unknown) {
       console.error('Failed to create RFQ:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error('Failed to create RFQ', {
+        description: errorMessage,
+      });
     }
   };
 
@@ -62,12 +75,19 @@ export default function CreateRFQPage() {
 
       {/* Form */}
       <div className="max-w-4xl">
-        <RFQForm
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isSubmitting={createMutation.isPending}
-          mode="create"
-        />
+        {suppliersLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          </div>
+        ) : (
+          <RFQForm
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            isSubmitting={createMutation.isPending}
+            mode="create"
+            availableSuppliers={suppliersData?.results || []}
+          />
+        )}
       </div>
     </motion.div>
   );

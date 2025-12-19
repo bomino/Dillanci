@@ -1,0 +1,73 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Bid Received - {{ rfq_number }}{% endblock %}
+
+{% block content %}
+<h1 class="email-title">New Bid Received</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        A new bid has been submitted for your <strong>Request for Quotation (RFQ)</strong>.
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">RFQ Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ rfq_number }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">RFQ Title</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ rfq_title }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        {% if bid_amount %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Bid Amount</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ currency }} {{ bid_amount|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Submitted At</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ submitted_at }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge status-info">New Bid</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if total_bids %}
+<div class="email-body">
+    <p>
+        <strong>{{ total_bids }} bid{% if total_bids > 1 %}s{% endif %}</strong> received so far for this RFQ.
+        {% if closing_date %}Bidding closes on <strong>{{ closing_date }}</strong>.{% endif %}
+    </p>
+</div>
+{% endif %}
+
+{% if supplier_notes %}
+<div class="email-body">
+    <p><strong>Supplier Notes:</strong></p>
+    <p style="padding: 12px; background-color: #fafaf9; border-radius: 4px; font-style: italic;">{{ supplier_notes }}</p>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">Review Bid</a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        You're receiving this email because you're the creator of this RFQ.
+    </p>
+</div>
+{% endblock %}

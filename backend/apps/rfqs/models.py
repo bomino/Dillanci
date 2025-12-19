@@ -34,6 +34,24 @@ class RFQ(SoftDeleteModel):
         ('CANCELLED', 'Cancelled'),
     ]
 
+    BID_TYPES = [
+        ('OPEN', 'Open Bid'),
+        ('SEALED', 'Sealed Bid'),
+        ('INVITED', 'Invited Bid'),
+    ]
+
+    PAYMENT_TERMS_CHOICES = [
+        ('NET15', 'Net 15'),
+        ('NET30', 'Net 30'),
+        ('NET45', 'Net 45'),
+        ('NET60', 'Net 60'),
+        ('NET90', 'Net 90'),
+        ('DUE_ON_RECEIPT', 'Due on Receipt'),
+        ('ADVANCE', '50% Advance, 50% on Delivery'),
+        ('MILESTONE', 'Milestone-based'),
+        ('OTHER', 'Other'),
+    ]
+
     TRANSITIONS = {
         'DRAFT': ['OPEN', 'CANCELLED'],
         'OPEN': ['CLOSED', 'CANCELLED'],
@@ -42,6 +60,7 @@ class RFQ(SoftDeleteModel):
         'CANCELLED': [],
     }
 
+    # Basic Information
     number = models.CharField(max_length=50, unique=True, blank=True)
     organization = models.ForeignKey(
         'organizations.Organization',
@@ -56,11 +75,80 @@ class RFQ(SoftDeleteModel):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUSES, default='DRAFT')
+    bid_type = models.CharField(max_length=20, choices=BID_TYPES, default='INVITED')
 
-    # Status timestamps
+    # Buyer/Contact Information
+    buyer_name = models.CharField(max_length=100, blank=True)
+    buyer_email = models.EmailField(blank=True)
+    buyer_phone = models.CharField(max_length=30, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+
+    # Project Background
+    project_background = models.TextField(
+        blank=True,
+        help_text='Brief summary of the project goals to provide context'
+    )
+
+    # Critical Timelines
+    issue_date = models.DateTimeField(null=True, blank=True)
+    qa_deadline = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Deadline for supplier questions'
+    )
+    submission_deadline = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Final deadline for bid submissions'
+    )
+    expected_award_date = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Target date for announcing the winner'
+    )
+
+    # Legacy fields (mapped to new fields)
     open_date = models.DateTimeField(null=True, blank=True)
     close_date = models.DateTimeField(null=True, blank=True)
     awarded_date = models.DateTimeField(null=True, blank=True)
+
+    # Commercial Terms
+    payment_terms = models.CharField(
+        max_length=20, choices=PAYMENT_TERMS_CHOICES, default='NET30'
+    )
+    payment_terms_notes = models.TextField(blank=True)
+    contract_duration_months = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Proposed contract length in months'
+    )
+    contract_renewal_options = models.CharField(
+        max_length=200, blank=True,
+        help_text='e.g., "2 x 1-year renewals"'
+    )
+    currency = models.CharField(max_length=3, default='USD')
+
+    # Delivery Requirements
+    delivery_address = models.TextField(blank=True)
+    delivery_terms = models.CharField(
+        max_length=50, blank=True,
+        help_text='Incoterms (e.g., FOB, CIF, DDP)'
+    )
+    required_delivery_date = models.DateField(null=True, blank=True)
+
+    # Evaluation Criteria (stored as JSON for flexibility)
+    evaluation_criteria = models.JSONField(
+        null=True, blank=True,
+        help_text='Weighted scoring criteria, e.g., [{"name": "Price", "weight": 60}, {"name": "Quality", "weight": 20}]'
+    )
+    required_certifications = models.TextField(
+        blank=True,
+        help_text='Required vendor certifications (e.g., ISO 9001, SOC 2)'
+    )
+    required_attachments_description = models.TextField(
+        blank=True,
+        help_text='Description of required attachments (licenses, NDAs, etc.)'
+    )
+
+    # Terms and Conditions
+    terms_and_conditions = models.TextField(blank=True)
+    nda_required = models.BooleanField(default=False)
 
     # Award info
     awarded_supplier = models.ForeignKey(

@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RFQForm } from '@/components/rfqs';
+import { RFQForm, InvitedSuppliersCard } from '@/components/rfqs';
 import { CommentsSection } from '@/components/ui/comments-section';
 import { AttachmentsSection } from '@/components/ui/attachments-section';
 
@@ -440,6 +440,14 @@ export default function RFQDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Invited Suppliers */}
+          <InvitedSuppliersCard
+            rfqId={rfq.id}
+            rfqStatus={rfq.status}
+            invitations={rfq.invitations || []}
+            availableSuppliers={approvedSuppliers || []}
+          />
 
           {/* Vendor Quotes */}
           {vendorQuotes && vendorQuotes.length > 0 && (

@@ -28,6 +28,22 @@ import { AuditLogsPage } from '@/pages/admin/audit';
 import { WorkflowsPage } from '@/pages/admin/workflows';
 import { AdminSettingsPage } from '@/pages/admin/settings';
 
+// Portal Pages
+import {
+  PortalLayout,
+  PortalLoginPage,
+  PortalRegisterPage,
+  PortalDashboard,
+  PortalRFQsPage,
+  PortalRFQDetailPage,
+  PortalRFPsPage,
+  PortalRFPDetailPage,
+  PortalPOsPage,
+  PortalPODetailPage,
+  PortalProfilePage,
+} from '@/pages/portal';
+import { usePortalIsAuthenticated } from '@/stores/portal-store';
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +62,17 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  return <>{children}</>;
+}
+
+// Portal protected route component
+function PortalProtectedRoute({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = usePortalIsAuthenticated();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/portal/login" replace />;
+  }
 
   return <>{children}</>;
 }
@@ -292,6 +319,20 @@ function App() {
 
             {/* Redirect root to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+            {/* Supplier Portal Routes - Separate from main app */}
+            <Route path="/portal/login" element={<PortalLoginPage />} />
+            <Route path="/portal/register" element={<PortalRegisterPage />} />
+            <Route path="/portal" element={<PortalProtectedRoute><PortalLayout /></PortalProtectedRoute>}>
+              <Route index element={<PortalDashboard />} />
+              <Route path="rfqs" element={<PortalRFQsPage />} />
+              <Route path="rfqs/:id" element={<PortalRFQDetailPage />} />
+              <Route path="rfps" element={<PortalRFPsPage />} />
+              <Route path="rfps/:id" element={<PortalRFPDetailPage />} />
+              <Route path="purchase-orders" element={<PortalPOsPage />} />
+              <Route path="purchase-orders/:id" element={<PortalPODetailPage />} />
+              <Route path="profile" element={<PortalProfilePage />} />
+            </Route>
 
             {/* 404 */}
             <Route

@@ -393,6 +393,11 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         ('SUSPENDED', 'Suspended'),
     ]
 
+    USER_TYPES = [
+        ('INTERNAL', 'Internal User'),
+        ('PORTAL', 'Portal User'),
+    ]
+
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -408,6 +413,7 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     )
 
     status = models.CharField(max_length=20, choices=STATUSES, default='ACTIVE')
+    user_type = models.CharField(max_length=20, choices=USER_TYPES, default='INTERNAL')
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
@@ -754,3 +760,114 @@ class RoleChangeLog(BaseModel):
 
     def __str__(self):
         return f'{self.user.email} - {self.action} - {self.role_name}'
+
+
+# =============================================================================
+# User Email Preferences - Control email notification delivery
+# =============================================================================
+
+class UserEmailPreference(BaseModel):
+    """
+    User preferences for email notifications.
+    Controls which notification types are sent via email.
+    """
+
+    DIGEST_FREQUENCIES = [
+        ('IMMEDIATE', 'Immediate'),
+        ('DAILY', 'Daily Digest'),
+        ('WEEKLY', 'Weekly Digest'),
+        ('NONE', 'No Emails'),
+    ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='email_preferences'
+    )
+
+    # Per notification type toggles
+    email_approval_required = models.BooleanField(
+        default=True,
+        help_text='Receive email when approval is required'
+    )
+    email_approval_completed = models.BooleanField(
+        default=True,
+        help_text='Receive email when your submission is approved'
+    )
+    email_approval_rejected = models.BooleanField(
+        default=True,
+        help_text='Receive email when your submission is rejected'
+    )
+    email_contract_expiring = models.BooleanField(
+        default=True,
+        help_text='Receive email when contracts are expiring'
+    )
+    email_bid_received = models.BooleanField(
+        default=True,
+        help_text='Receive email when bids are received on RFQs'
+    )
+    email_goods_received = models.BooleanField(
+        default=True,
+        help_text='Receive email when goods are received'
+    )
+    email_invoice_matched = models.BooleanField(
+        default=True,
+        help_text='Receive email when invoices are matched'
+    )
+    email_document_submitted = models.BooleanField(
+        default=True,
+        help_text='Receive email when documents are submitted for review'
+    )
+    email_budget_alert = models.BooleanField(
+        default=True,
+        help_text='Receive email for budget alerts'
+    )
+    email_system_alert = models.BooleanField(
+        default=True,
+        help_text='Receive email for system alerts'
+    )
+
+    # Digest settings
+    digest_frequency = models.CharField(
+        max_length=20,
+        choices=DIGEST_FREQUENCIES,
+        default='IMMEDIATE',
+        help_text='How often to receive notification emails'
+    )
+
+    class Meta:
+        db_table = 'user_email_preference'
+        verbose_name = 'User Email Preference'
+        verbose_name_plural = 'User Email Preferences'
+
+    def __str__(self):
+        return f'Email Preferences for {self.user.email}'
+
+    def should_send_email(self, notification_type: str) -> bool:
+        """
+        Check if email should be sent for a given notification type.
+        """
+        if self.digest_frequency == 'NONE':
+            return False
+
+        # Map notification types to preference fields
+        type_mapping = {
+            'APPROVAL_REQUIRED': self.email_approval_required,
+            'APPROVAL_COMPLETED': self.email_approval_completed,
+            'APPROVAL_REJECTED': self.email_approval_rejected,
+            'CONTRACT_EXPIRING': self.email_contract_expiring,
+            'BID_RECEIVED': self.email_bid_received,
+            'GOODS_RECEIVED': self.email_goods_received,
+            'INVOICE_MATCHED': self.email_invoice_matched,
+            'DOCUMENT_SUBMITTED': self.email_document_submitted,
+            'BUDGET_ALERT': self.email_budget_alert,
+            'SYSTEM_ALERT': self.email_system_alert,
+        }
+
+        return type_mapping.get(notification_type, True)
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """Get or create email preferences for a user with defaults."""
+        preferences, created = cls.objects.get_or_create(user=user)
+        return preferences

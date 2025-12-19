@@ -1,0 +1,67 @@
+{% extends "emails/base.html" %}
+
+{% block title %}{{ document_type }} Rejected - {{ document_number }}{% endblock %}
+
+{% block content %}
+<h1 class="email-title">{{ document_type }} Rejected</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        Unfortunately, your <strong>{{ document_type }}</strong> has been <strong>rejected</strong>
+        {% if approver_name %}by {{ approver_name }}{% endif %}.
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">{{ document_type }} Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ document_number }}</td>
+        </tr>
+        {% if document_title %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Title</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ document_title }}</td>
+        </tr>
+        {% endif %}
+        {% if total_amount %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Amount</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ currency }} {{ total_amount|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge status-rejected">Rejected</span>
+            </td>
+        </tr>
+        {% if rejected_at %}
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Rejected At</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ rejected_at }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+{% if rejection_reason %}
+<div class="email-body">
+    <p><strong>Reason for Rejection:</strong></p>
+    <p style="padding: 12px; background-color: #fef2f2; border-radius: 4px; border-left: 4px solid #dc2626;">
+        {{ rejection_reason }}
+    </p>
+</div>
+{% endif %}
+
+<div class="email-body">
+    <p>
+        You can review the feedback and make the necessary changes before resubmitting.
+    </p>
+</div>
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">Review &amp; Edit</a>
+</div>
+{% endblock %}

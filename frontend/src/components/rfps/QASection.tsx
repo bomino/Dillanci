@@ -1,24 +1,35 @@
-import * as React from 'react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   MessageCircleQuestion,
   Send,
   Eye,
   EyeOff,
-  CheckCircle,
+  Globe,
+  Users,
+  Lock,
+  Filter,
+  Download,
+  Search,
   Clock,
+  CheckCircle2,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Calendar,
   User,
   Building2,
-  AlertCircle,
-  Loader2,
-  Filter,
-  Search,
+  MessageSquare,
+  MoreVertical,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -27,11 +38,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -39,455 +45,819 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn, formatDateTime, formatRelativeTime } from '@/lib/utils';
 
+// Types for export
 export type QuestionStatus = 'PENDING' | 'ANSWERED' | 'PUBLISHED';
+export type QAVisibility = 'PRIVATE' | 'PUBLIC' | 'ALL_BIDDERS';
 
 export interface RFPQuestion {
   id: string;
   rfp_id: string;
-  supplier_id: string;
-  supplier_name: string;
+  supplier_id: string | null;
+  supplier_name: string | null;
+  asked_by_id: string;
+  asked_by_name: string;
   question: string;
   answer: string | null;
-  answered_by: string | null;
+  answered_by_id: string | null;
+  answered_by_name: string | null;
   answered_at: string | null;
+  visibility: QAVisibility;
+  visibility_display: string;
   is_published: boolean;
   published_at: string | null;
-  requires_amendment: boolean;
-  amendment_note: string | null;
   created_at: string;
+  updated_at: string;
+  // Amendment tracking
+  requires_amendment?: boolean;
+  amendment_note?: string | null;
+  amendment_version?: number;
+  previous_answers?: {
+    answer: string;
+    answered_at: string;
+    answered_by_name: string;
+  }[];
 }
 
 interface QASectionProps {
   rfpId: string;
   questions: RFPQuestion[];
-  onAnswerQuestion: (questionId: string, answer: string, requiresAmendment: boolean, amendmentNote?: string) => Promise<void>;
-  onPublishAnswer: (questionId: string) => Promise<void>;
-  onUnpublishAnswer: (questionId: string) => Promise<void>;
+  onAnswerQuestion?: (
+    questionId: string,
+    answer: string,
+    visibility: QAVisibility,
+    requiresAmendment?: boolean,
+    amendmentNote?: string
+  ) => Promise<void>;
+  onPublishAnswer?: (questionId: string, visibility: QAVisibility) => Promise<void>;
+  onUnpublishAnswer?: (questionId: string) => Promise<void>;
+  onDeleteQuestion?: (questionId: string) => Promise<void>;
+  onEditAnswer?: (
+    questionId: string,
+    answer: string,
+    visibility: QAVisibility,
+    amendmentNote?: string
+  ) => Promise<void>;
+  onExportQA?: (format: 'pdf' | 'csv') => Promise<void>;
   isOwner?: boolean;
-  className?: string;
+  isLoading?: boolean;
+  rfpStatus?: string;
 }
 
-const statusConfig: Record<QuestionStatus, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  PENDING: { label: 'Pending', color: 'text-amber-700', bgColor: 'bg-amber-100', icon: Clock },
-  ANSWERED: { label: 'Answered', color: 'text-blue-700', bgColor: 'bg-blue-100', icon: CheckCircle },
-  PUBLISHED: { label: 'Published', color: 'text-emerald-700', bgColor: 'bg-emerald-100', icon: Eye },
-};
-
-function getQuestionStatus(question: RFPQuestion): QuestionStatus {
-  if (question.is_published) return 'PUBLISHED';
-  if (question.answer) return 'ANSWERED';
-  return 'PENDING';
-}
+type FilterStatus = 'all' | 'pending' | 'answered' | 'published';
+type SortOption = 'newest' | 'oldest' | 'supplier';
 
 export function QASection({
+  rfpId: _rfpId,
   questions,
   onAnswerQuestion,
   onPublishAnswer,
   onUnpublishAnswer,
+  onDeleteQuestion,
+  onEditAnswer,
+  onExportQA,
   isOwner = false,
-  className,
+  isLoading = false,
+  rfpStatus = 'PUBLISHED',
 }: QASectionProps) {
-  const [filter, setFilter] = React.useState<'all' | QuestionStatus>('all');
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [answerDialogOpen, setAnswerDialogOpen] = React.useState(false);
-  const [selectedQuestion, setSelectedQuestion] = React.useState<RFPQuestion | null>(null);
-  const [answerText, setAnswerText] = React.useState('');
-  const [requiresAmendment, setRequiresAmendment] = React.useState(false);
-  const [amendmentNote, setAmendmentNote] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [publishingId, setPublishingId] = React.useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+  // State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [filterSupplier, setFilterSupplier] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
 
-  // Filter and search questions
-  const filteredQuestions = React.useMemo(() => {
-    let result = [...questions];
+  // Dialog states
+  const [answerDialogOpen, setAnswerDialogOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<RFPQuestion | null>(null);
+  const [answerText, setAnswerText] = useState('');
+  const [answerVisibility, setAnswerVisibility] = useState<QAVisibility>('ALL_BIDDERS');
+  const [requiresAmendment, setRequiresAmendment] = useState(false);
+  const [amendmentNote, setAmendmentNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Apply status filter
-    if (filter !== 'all') {
-      result = result.filter(q => getQuestionStatus(q) === filter);
-    }
+  // Publish dialog
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishVisibility, setPublishVisibility] = useState<QAVisibility>('ALL_BIDDERS');
 
-    // Apply search
-    if (searchQuery.trim()) {
+  // Delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+
+  // History dialog
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyQuestion, setHistoryQuestion] = useState<RFPQuestion | null>(null);
+
+  // Get unique suppliers from questions
+  const suppliers = useMemo(() => {
+    const supplierMap = new Map<string, string>();
+    questions.forEach(q => {
+      if (q.supplier_id && q.supplier_name) {
+        supplierMap.set(q.supplier_id, q.supplier_name);
+      }
+    });
+    return Array.from(supplierMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [questions]);
+
+  // Computed stats
+  const stats = useMemo(() => {
+    const total = questions.length;
+    const pending = questions.filter(q => !q.answer).length;
+    const answered = questions.filter(q => q.answer && !q.is_published).length;
+    const published = questions.filter(q => q.is_published).length;
+    return { total, pending, answered, published };
+  }, [questions]);
+
+  // Filtered and sorted questions
+  const filteredQuestions = useMemo(() => {
+    let filtered = [...questions];
+
+    // Search filter
+    if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(q =>
+      filtered = filtered.filter(q =>
         q.question.toLowerCase().includes(query) ||
-        q.supplier_name.toLowerCase().includes(query) ||
-        (q.answer && q.answer.toLowerCase().includes(query))
+        q.answer?.toLowerCase().includes(query) ||
+        q.supplier_name?.toLowerCase().includes(query) ||
+        q.asked_by_name.toLowerCase().includes(query)
       );
     }
 
-    // Sort by date (newest first)
-    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // Status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(q => {
+        if (filterStatus === 'pending') return !q.answer;
+        if (filterStatus === 'answered') return q.answer && !q.is_published;
+        if (filterStatus === 'published') return q.is_published;
+        return true;
+      });
+    }
 
-    return result;
-  }, [questions, filter, searchQuery]);
+    // Supplier filter
+    if (filterSupplier !== 'all') {
+      filtered = filtered.filter(q => q.supplier_id === filterSupplier);
+    }
 
-  // Count by status
-  const counts = React.useMemo(() => {
-    return {
-      all: questions.length,
-      PENDING: questions.filter(q => getQuestionStatus(q) === 'PENDING').length,
-      ANSWERED: questions.filter(q => getQuestionStatus(q) === 'ANSWERED').length,
-      PUBLISHED: questions.filter(q => getQuestionStatus(q) === 'PUBLISHED').length,
-    };
-  }, [questions]);
-
-  const toggleExpanded = (id: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
-      return next;
+      if (sortBy === 'oldest') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortBy === 'supplier') {
+        return (a.supplier_name || '').localeCompare(b.supplier_name || '');
+      }
+      return 0;
     });
+
+    return filtered;
+  }, [questions, searchQuery, filterStatus, filterSupplier, sortBy]);
+
+  // Toggle question expansion
+  const toggleExpanded = (questionId: string) => {
+    const newExpanded = new Set(expandedQuestions);
+    if (newExpanded.has(questionId)) {
+      newExpanded.delete(questionId);
+    } else {
+      newExpanded.add(questionId);
+    }
+    setExpandedQuestions(newExpanded);
   };
 
+  // Open answer dialog
   const openAnswerDialog = (question: RFPQuestion) => {
     setSelectedQuestion(question);
     setAnswerText(question.answer || '');
-    setRequiresAmendment(question.requires_amendment);
-    setAmendmentNote(question.amendment_note || '');
+    setAnswerVisibility(question.visibility || 'ALL_BIDDERS');
+    setRequiresAmendment(false);
+    setAmendmentNote('');
     setAnswerDialogOpen(true);
   };
 
+  // Submit answer
   const handleSubmitAnswer = async () => {
     if (!selectedQuestion || !answerText.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await onAnswerQuestion(
-        selectedQuestion.id,
-        answerText.trim(),
-        requiresAmendment,
-        requiresAmendment ? amendmentNote.trim() : undefined
-      );
+      if (selectedQuestion.answer && onEditAnswer) {
+        // Editing existing answer
+        await onEditAnswer(
+          selectedQuestion.id,
+          answerText,
+          answerVisibility,
+          requiresAmendment ? amendmentNote : undefined
+        );
+      } else if (onAnswerQuestion) {
+        // New answer
+        await onAnswerQuestion(
+          selectedQuestion.id,
+          answerText,
+          answerVisibility,
+          requiresAmendment,
+          requiresAmendment ? amendmentNote : undefined
+        );
+      }
       setAnswerDialogOpen(false);
       setSelectedQuestion(null);
       setAnswerText('');
-      setRequiresAmendment(false);
-      setAmendmentNote('');
+    } catch (error) {
+      console.error('Failed to submit answer:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handlePublish = async (questionId: string) => {
-    setPublishingId(questionId);
+  // Open publish dialog
+  const openPublishDialog = (question: RFPQuestion) => {
+    setSelectedQuestion(question);
+    setPublishVisibility(question.visibility || 'ALL_BIDDERS');
+    setPublishDialogOpen(true);
+  };
+
+  // Publish answer
+  const handlePublish = async () => {
+    if (!selectedQuestion || !onPublishAnswer) return;
+
+    setIsSubmitting(true);
     try {
-      await onPublishAnswer(questionId);
+      await onPublishAnswer(selectedQuestion.id, publishVisibility);
+      setPublishDialogOpen(false);
+      setSelectedQuestion(null);
+    } catch (error) {
+      console.error('Failed to publish answer:', error);
     } finally {
-      setPublishingId(null);
+      setIsSubmitting(false);
     }
   };
 
+  // Unpublish answer
   const handleUnpublish = async (questionId: string) => {
-    setPublishingId(questionId);
+    if (!onUnpublishAnswer) return;
+
     try {
       await onUnpublishAnswer(questionId);
-    } finally {
-      setPublishingId(null);
+    } catch (error) {
+      console.error('Failed to unpublish answer:', error);
     }
   };
 
+  // Delete question
+  const handleDelete = async () => {
+    if (!questionToDelete || !onDeleteQuestion) return;
+
+    setIsSubmitting(true);
+    try {
+      await onDeleteQuestion(questionToDelete);
+      setDeleteDialogOpen(false);
+      setQuestionToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete question:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Export Q&A
+  const handleExport = async (format: 'pdf' | 'csv') => {
+    if (!onExportQA) return;
+
+    try {
+      await onExportQA(format);
+    } catch (error) {
+      console.error('Failed to export Q&A:', error);
+    }
+  };
+
+  // View history
+  const openHistoryDialog = (question: RFPQuestion) => {
+    setHistoryQuestion(question);
+    setHistoryDialogOpen(true);
+  };
+
+  // Get status badge
+  const getStatusBadge = (question: RFPQuestion) => {
+    if (question.is_published) {
+      return (
+        <Badge variant="default" className="bg-green-100 text-green-700">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Published
+        </Badge>
+      );
+    }
+    if (question.answer) {
+      return (
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+          <MessageSquare className="h-3 w-3 mr-1" />
+          Answered
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+        <Clock className="h-3 w-3 mr-1" />
+        Pending
+      </Badge>
+    );
+  };
+
+  // Get visibility icon
+  const getVisibilityIcon = (visibility: QAVisibility) => {
+    switch (visibility) {
+      case 'PUBLIC':
+        return <Globe className="h-3.5 w-3.5" />;
+      case 'ALL_BIDDERS':
+        return <Users className="h-3.5 w-3.5" />;
+      case 'PRIVATE':
+        return <Lock className="h-3.5 w-3.5" />;
+    }
+  };
+
+  // Get visibility label
+  const getVisibilityLabel = (visibility: QAVisibility) => {
+    switch (visibility) {
+      case 'PUBLIC':
+        return 'Public';
+      case 'ALL_BIDDERS':
+        return 'All Bidders';
+      case 'PRIVATE':
+        return 'Private';
+    }
+  };
+
+  // Can edit/answer based on RFP status
+  const canManageQA = isOwner && ['PUBLISHED', 'EVALUATION'].includes(rfpStatus);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+            <p className="mt-4 text-neutral-500">Loading Q&A...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className={className}>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircleQuestion className="h-5 w-5" />
-            Q&A Section
-            <Badge variant="secondary" className="ml-2">
-              {questions.length} question{questions.length !== 1 ? 's' : ''}
-            </Badge>
-          </CardTitle>
-
-          {/* Stats Pills */}
-          <div className="flex items-center gap-2">
-            {counts.PENDING > 0 && (
-              <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">
-                {counts.PENDING} pending
-              </Badge>
-            )}
-            {counts.ANSWERED > 0 && (
-              <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50">
-                {counts.ANSWERED} answered
-              </Badge>
-            )}
-            {counts.PUBLISHED > 0 && (
-              <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50">
-                {counts.PUBLISHED} published
-              </Badge>
+    <div className="space-y-4">
+      {/* Header Card with Stats */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircleQuestion className="h-5 w-5 text-primary-600" />
+                Q&A Portal
+              </CardTitle>
+              <CardDescription>
+                Centralized vendor questions and clarifications
+              </CardDescription>
+            </div>
+            {onExportQA && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('csv')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-            <Input
-              placeholder="Search questions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+        </CardHeader>
+        <CardContent>
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <button
+              onClick={() => setFilterStatus('all')}
+              className={cn(
+                'p-3 rounded-lg border transition-colors text-left',
+                filterStatus === 'all'
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-neutral-200 hover:bg-neutral-50'
+              )}
+            >
+              <p className="text-2xl font-bold text-neutral-900">{stats.total}</p>
+              <p className="text-xs text-neutral-500">Total Questions</p>
+            </button>
+            <button
+              onClick={() => setFilterStatus('pending')}
+              className={cn(
+                'p-3 rounded-lg border transition-colors text-left',
+                filterStatus === 'pending'
+                  ? 'border-amber-500 bg-amber-50'
+                  : 'border-neutral-200 hover:bg-neutral-50'
+              )}
+            >
+              <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+              <p className="text-xs text-neutral-500">Pending</p>
+            </button>
+            <button
+              onClick={() => setFilterStatus('answered')}
+              className={cn(
+                'p-3 rounded-lg border transition-colors text-left',
+                filterStatus === 'answered'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-neutral-200 hover:bg-neutral-50'
+              )}
+            >
+              <p className="text-2xl font-bold text-blue-600">{stats.answered}</p>
+              <p className="text-xs text-neutral-500">Answered</p>
+            </button>
+            <button
+              onClick={() => setFilterStatus('published')}
+              className={cn(
+                'p-3 rounded-lg border transition-colors text-left',
+                filterStatus === 'published'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-neutral-200 hover:bg-neutral-50'
+              )}
+            >
+              <p className="text-2xl font-bold text-green-600">{stats.published}</p>
+              <p className="text-xs text-neutral-500">Published</p>
+            </button>
           </div>
-          <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All ({counts.all})</SelectItem>
-              <SelectItem value="PENDING">Pending ({counts.PENDING})</SelectItem>
-              <SelectItem value="ANSWERED">Answered ({counts.ANSWERED})</SelectItem>
-              <SelectItem value="PUBLISHED">Published ({counts.PUBLISHED})</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
 
-      <CardContent>
-        {filteredQuestions.length === 0 ? (
-          <div className="text-center py-8">
-            <MessageCircleQuestion className="h-10 w-10 text-neutral-300 mx-auto mb-2" />
-            <p className="text-neutral-500 text-sm">
-              {questions.length === 0
-                ? 'No questions have been submitted yet'
-                : 'No questions match your filters'}
-            </p>
+          {/* Filters Row */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <Input
+                placeholder="Search questions or answers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={filterSupplier} onValueChange={setFilterSupplier}>
+              <SelectTrigger className="w-[180px]">
+                <Building2 className="h-4 w-4 mr-2 text-neutral-400" />
+                <SelectValue placeholder="All Suppliers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Suppliers</SelectItem>
+                {suppliers.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[140px]">
+                <Filter className="h-4 w-4 mr-2 text-neutral-400" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="supplier">By Supplier</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredQuestions.map((question) => {
-              const status = getQuestionStatus(question);
-              const config = statusConfig[status];
-              const StatusIcon = config.icon;
-              const isExpanded = expandedIds.has(question.id);
+        </CardContent>
+      </Card>
 
-              return (
-                <Collapsible
-                  key={question.id}
-                  open={isExpanded}
-                  onOpenChange={() => toggleExpanded(question.id)}
-                >
-                  <div className={cn(
-                    'border rounded-lg overflow-hidden',
-                    question.requires_amendment && 'border-amber-300 bg-amber-50/50'
-                  )}>
-                    {/* Question Header */}
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-start gap-3 p-4 cursor-pointer hover:bg-neutral-50 transition-colors">
-                        <div className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0',
-                          config.bgColor
-                        )}>
-                          <StatusIcon className={cn('h-4 w-4', config.color)} />
-                        </div>
+      {/* Questions List */}
+      <Card>
+        <CardContent className="p-0">
+          {filteredQuestions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <MessageCircleQuestion className="h-12 w-12 text-neutral-300 mb-3" />
+              <p className="text-neutral-500 font-medium">No questions found</p>
+              <p className="text-sm text-neutral-400 mt-1">
+                {questions.length === 0
+                  ? 'No questions have been submitted yet.'
+                  : 'Try adjusting your filters.'}
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[600px]">
+              <div className="divide-y divide-neutral-100">
+                {filteredQuestions.map((question) => {
+                  const isExpanded = expandedQuestions.has(question.id);
 
+                  return (
+                    <div key={question.id} className="p-4 hover:bg-neutral-50/50">
+                      {/* Question Header */}
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={cn(
-                              'px-2 py-0.5 text-xs font-medium rounded-full',
-                              config.bgColor,
-                              config.color
-                            )}>
-                              {config.label}
-                            </span>
-                            <span className="text-xs text-neutral-400">
-                              {formatDistanceToNow(new Date(question.created_at), { addSuffix: true })}
-                            </span>
-                            {question.requires_amendment && (
-                              <Badge variant="outline" className="text-amber-700 border-amber-300 text-xs">
-                                <AlertCircle className="h-3 w-3 mr-1" />
-                                Amendment
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {getStatusBadge(question)}
+                            {question.is_published && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="gap-1">
+                                      {getVisibilityIcon(question.visibility)}
+                                      {getVisibilityLabel(question.visibility)}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Answer visible to: {getVisibilityLabel(question.visibility)}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {question.amendment_version && question.amendment_version > 1 && (
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer"
+                                onClick={() => openHistoryDialog(question)}
+                              >
+                                v{question.amendment_version} (amended)
                               </Badge>
                             )}
                           </div>
 
-                          <p className="text-sm font-medium text-neutral-900 line-clamp-2">
+                          {/* Question Text */}
+                          <p className="text-sm text-neutral-900 font-medium">
                             {question.question}
                           </p>
 
-                          <div className="flex items-center gap-1 mt-2 text-xs text-neutral-500">
-                            <Building2 className="h-3 w-3" />
-                            <span>{question.supplier_name}</span>
+                          {/* Meta info */}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-neutral-500">
+                            {question.supplier_name && (
+                              <span className="flex items-center gap-1">
+                                <Building2 className="h-3 w-3" />
+                                {question.supplier_name}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {question.asked_by_name}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatRelativeTime(question.created_at)}
+                            </span>
                           </div>
                         </div>
-                      </div>
-                    </CollapsibleTrigger>
 
-                    {/* Expanded Content */}
-                    <CollapsibleContent>
-                      <div className="px-4 pb-4 border-t bg-neutral-50/50">
-                        {/* Full Question */}
-                        <div className="pt-4">
-                          <h4 className="text-xs font-medium text-neutral-500 uppercase mb-2">
-                            Question
-                          </h4>
-                          <p className="text-sm text-neutral-700 whitespace-pre-wrap">
-                            {question.question}
-                          </p>
-                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {question.answer && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleExpanded(question.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
 
-                        {/* Answer Section */}
-                        {question.answer ? (
-                          <div className="mt-4 p-3 bg-white rounded-lg border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <User className="h-4 w-4 text-neutral-400" />
-                              <span className="text-xs text-neutral-500">
-                                Answered by {question.answered_by}
-                                {question.answered_at && (
-                                  <> on {format(new Date(question.answered_at), 'MMM d, yyyy h:mm a')}</>
+                          {canManageQA && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {!question.answer ? (
+                                  <DropdownMenuItem onClick={() => openAnswerDialog(question)}>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Answer Question
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <>
+                                    <DropdownMenuItem onClick={() => openAnswerDialog(question)}>
+                                      <Edit2 className="h-4 w-4 mr-2" />
+                                      Edit Answer
+                                    </DropdownMenuItem>
+                                    {!question.is_published ? (
+                                      <DropdownMenuItem onClick={() => openPublishDialog(question)}>
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        Publish Answer
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onClick={() => handleUnpublish(question.id)}>
+                                        <EyeOff className="h-4 w-4 mr-2" />
+                                        Unpublish Answer
+                                      </DropdownMenuItem>
+                                    )}
+                                  </>
                                 )}
-                              </span>
-                            </div>
+                                {question.amendment_version && question.amendment_version > 1 && (
+                                  <DropdownMenuItem onClick={() => openHistoryDialog(question)}>
+                                    <Clock className="h-4 w-4 mr-2" />
+                                    View History
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() => {
+                                    setQuestionToDelete(question.id);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Question
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Answer Section (Expandable) */}
+                      {question.answer && isExpanded && (
+                        <div className="mt-4 pl-4 border-l-2 border-primary-200">
+                          <div className="bg-primary-50/50 rounded-lg p-3">
                             <p className="text-sm text-neutral-700 whitespace-pre-wrap">
                               {question.answer}
                             </p>
-
-                            {question.requires_amendment && question.amendment_note && (
-                              <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded">
-                                <div className="flex items-center gap-1 text-xs font-medium text-amber-700 mb-1">
-                                  <AlertCircle className="h-3 w-3" />
-                                  Amendment Note
-                                </div>
-                                <p className="text-xs text-amber-700">{question.amendment_note}</p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-neutral-500">
+                              {question.answered_by_name && (
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  Answered by {question.answered_by_name}
+                                </span>
+                              )}
+                              {question.answered_at && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDateTime(question.answered_at)}
+                                </span>
+                              )}
+                            </div>
+                            {question.amendment_note && (
+                              <div className="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-700">
+                                <AlertCircle className="h-3 w-3 inline mr-1" />
+                                Amendment: {question.amendment_note}
                               </div>
                             )}
-
-                            {question.is_published && question.published_at && (
-                              <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
-                                <Eye className="h-3 w-3" />
-                                Published on {format(new Date(question.published_at), 'MMM d, yyyy')}
-                              </div>
-                            )}
                           </div>
-                        ) : (
-                          <div className="mt-4 p-3 bg-neutral-100 rounded-lg border border-dashed text-center">
-                            <Clock className="h-5 w-5 text-neutral-400 mx-auto mb-1" />
-                            <p className="text-sm text-neutral-500">Awaiting response</p>
-                          </div>
-                        )}
+                        </div>
+                      )}
 
-                        {/* Actions */}
-                        {isOwner && (
-                          <div className="mt-4 flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openAnswerDialog(question)}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              {question.answer ? 'Edit Answer' : 'Answer'}
-                            </Button>
-
-                            {question.answer && !question.is_published && (
-                              <Button
-                                size="sm"
-                                onClick={() => handlePublish(question.id)}
-                                disabled={publishingId === question.id}
-                              >
-                                {publishingId === question.id ? (
-                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                ) : (
-                                  <Eye className="h-4 w-4 mr-1" />
-                                )}
-                                Publish
-                              </Button>
-                            )}
-
-                            {question.is_published && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleUnpublish(question.id)}
-                                disabled={publishingId === question.id}
-                              >
-                                {publishingId === question.id ? (
-                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                ) : (
-                                  <EyeOff className="h-4 w-4 mr-1" />
-                                )}
-                                Unpublish
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
+                      {/* Quick Answer Button for unanswered questions */}
+                      {!question.answer && canManageQA && (
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAnswerDialog(question)}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Answer this question
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Answer Dialog */}
       <Dialog open={answerDialogOpen} onOpenChange={setAnswerDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {selectedQuestion?.answer ? 'Edit Answer' : 'Answer Question'}
             </DialogTitle>
             <DialogDescription>
-              Provide an answer to this question. You can publish it to all bidders afterward.
+              {selectedQuestion?.answer
+                ? 'Update your answer to this question. Changes will be tracked.'
+                : 'Provide an answer to the vendor\'s question.'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Question Display */}
-            <div className="p-3 bg-neutral-50 rounded-lg">
-              <div className="flex items-center gap-1 text-xs text-neutral-500 mb-2">
-                <Building2 className="h-3 w-3" />
-                {selectedQuestion?.supplier_name}
+          {selectedQuestion && (
+            <div className="space-y-4">
+              {/* Original Question */}
+              <div className="bg-neutral-50 rounded-lg p-3">
+                <p className="text-xs text-neutral-500 mb-1">Question from {selectedQuestion.supplier_name || 'Internal'}</p>
+                <p className="text-sm text-neutral-900">{selectedQuestion.question}</p>
               </div>
-              <p className="text-sm text-neutral-700">{selectedQuestion?.question}</p>
-            </div>
 
-            {/* Answer Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">Your Answer</label>
-              <Textarea
-                value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
-                placeholder="Type your answer..."
-                rows={5}
-                className="resize-none"
-              />
-            </div>
-
-            {/* Amendment Toggle */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={requiresAmendment}
-                  onChange={(e) => setRequiresAmendment(e.target.checked)}
-                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
-                />
-                <span className="text-sm text-neutral-700">
-                  This answer requires an RFP amendment
-                </span>
-              </label>
-
-              {requiresAmendment && (
+              {/* Answer Input */}
+              <div>
+                <label className="text-sm font-medium text-neutral-700 mb-1.5 block">
+                  Your Answer
+                </label>
                 <Textarea
-                  value={amendmentNote}
-                  onChange={(e) => setAmendmentNote(e.target.value)}
-                  placeholder="Describe the amendment to be made..."
-                  rows={2}
-                  className="resize-none mt-2"
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                  placeholder="Type your answer here..."
+                  rows={6}
                 />
+              </div>
+
+              {/* Visibility Selection */}
+              <div>
+                <label className="text-sm font-medium text-neutral-700 mb-1.5 block">
+                  Visibility
+                </label>
+                <Select value={answerVisibility} onValueChange={(v) => setAnswerVisibility(v as QAVisibility)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_BIDDERS">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        All Bidders - Visible to all invited suppliers
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="PUBLIC">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Public - Visible to everyone
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="PRIVATE">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Private - Only visible to the asking supplier
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Choose who can see this answer when published.
+                </p>
+              </div>
+
+              {/* Amendment Option (for edits) */}
+              {selectedQuestion.answer && (
+                <div className="border-t pt-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={requiresAmendment}
+                      onChange={(e) => setRequiresAmendment(e.target.checked)}
+                      className="rounded border-neutral-300"
+                    />
+                    <span className="text-sm text-neutral-700">
+                      Mark as amendment (notifies vendors of update)
+                    </span>
+                  </label>
+
+                  {requiresAmendment && (
+                    <div className="mt-3">
+                      <label className="text-sm font-medium text-neutral-700 mb-1.5 block">
+                        Amendment Note
+                      </label>
+                      <Input
+                        value={amendmentNote}
+                        onChange={(e) => setAmendmentNote(e.target.value)}
+                        placeholder="Brief description of what changed..."
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAnswerDialogOpen(false)}>
@@ -497,22 +867,167 @@ export function QASection({
               onClick={handleSubmitAnswer}
               disabled={!answerText.trim() || isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Save Answer
-                </>
-              )}
+              {isSubmitting ? 'Saving...' : selectedQuestion?.answer ? 'Update Answer' : 'Submit Answer'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+
+      {/* Publish Dialog */}
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish Answer</DialogTitle>
+            <DialogDescription>
+              Choose the visibility for this answer. Once published, vendors will be able to see it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-neutral-700 mb-1.5 block">
+                Publish Visibility
+              </label>
+              <Select value={publishVisibility} onValueChange={(v) => setPublishVisibility(v as QAVisibility)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_BIDDERS">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      All Bidders
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="PUBLIC">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Public
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="PRIVATE">
+                    <div className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Private (asking supplier only)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Publishing this answer will make it visible according to the selected visibility setting.
+                All eligible vendors will be notified.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePublish} disabled={isSubmitting}>
+              {isSubmitting ? 'Publishing...' : 'Publish Answer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Question</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this question and its answer? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Answer History</DialogTitle>
+            <DialogDescription>
+              View all versions of the answer to this question.
+            </DialogDescription>
+          </DialogHeader>
+
+          {historyQuestion && (
+            <div className="space-y-4">
+              {/* Current Answer */}
+              <div className="border rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge>Current (v{historyQuestion.amendment_version || 1})</Badge>
+                  {historyQuestion.answered_at && (
+                    <span className="text-xs text-neutral-500">
+                      {formatDateTime(historyQuestion.answered_at)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                  {historyQuestion.answer}
+                </p>
+                {historyQuestion.answered_by_name && (
+                  <p className="text-xs text-neutral-500 mt-2">
+                    by {historyQuestion.answered_by_name}
+                  </p>
+                )}
+                {historyQuestion.amendment_note && (
+                  <div className="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-700">
+                    Amendment: {historyQuestion.amendment_note}
+                  </div>
+                )}
+              </div>
+
+              {/* Previous Answers */}
+              {historyQuestion.previous_answers && historyQuestion.previous_answers.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-neutral-700">Previous Versions</h4>
+                  {historyQuestion.previous_answers.map((prev, index) => (
+                    <div key={index} className="border rounded-lg p-3 bg-neutral-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline">
+                          v{(historyQuestion.amendment_version || 1) - index - 1}
+                        </Badge>
+                        <span className="text-xs text-neutral-500">
+                          {formatDateTime(prev.answered_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-600 whitespace-pre-wrap">
+                        {prev.answer}
+                      </p>
+                      <p className="text-xs text-neutral-500 mt-2">
+                        by {prev.answered_by_name}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

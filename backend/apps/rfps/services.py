@@ -430,5 +430,356 @@ class BAFOService:
         }
 
 
+class RFPNotificationService:
+    """Service for sending RFP-related notifications."""
+
+    @staticmethod
+    def notify_rfp_published(rfp: RFP):
+        """
+        Notify invited suppliers when an RFP is published.
+
+        Creates notifications for all portal users associated with invited suppliers.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        invitations = rfp.invitations.select_related('supplier')
+
+        for invitation in invitations:
+            # Get all portal users for this supplier
+            portal_users = PortalUser.objects.filter(
+                supplier=invitation.supplier,
+                is_active=True
+            ).select_related('user')
+
+            for portal_user in portal_users:
+                if portal_user.user:
+                    Notification.create_notification(
+                        user=portal_user.user,
+                        notification_type='RFP_INVITATION',
+                        title=f'New RFP Invitation: {rfp.title}',
+                        message=f'You have been invited to respond to RFP #{rfp.rfp_number}. '
+                                f'Submission deadline: {rfp.submission_deadline.strftime("%Y-%m-%d %H:%M") if rfp.submission_deadline else "No deadline set"}.',
+                        priority='HIGH',
+                        related_object_type='rfp',
+                        related_object_id=rfp.id,
+                        link=f'/portal/rfps/{rfp.id}',
+                        metadata={
+                            'rfp_number': rfp.rfp_number,
+                            'supplier_id': str(invitation.supplier.id),
+                            'submission_deadline': rfp.submission_deadline.isoformat() if rfp.submission_deadline else None,
+                        }
+                    )
+
+    @staticmethod
+    def notify_proposal_received(proposal: Proposal):
+        """
+        Notify RFP owner when a proposal is submitted.
+        """
+        from apps.core.models import Notification
+
+        rfp = proposal.rfp
+
+        # Notify RFP creator
+        Notification.create_notification(
+            user=rfp.created_by,
+            notification_type='PROPOSAL_RECEIVED',
+            title=f'New Proposal Received: {rfp.title}',
+            message=f'{proposal.supplier.name} has submitted a proposal for RFP #{rfp.rfp_number}. '
+                    f'Proposal number: {proposal.proposal_number}.',
+            priority='NORMAL',
+            related_object_type='proposal',
+            related_object_id=proposal.id,
+            link=f'/rfps/{rfp.id}?tab=proposals',
+            metadata={
+                'rfp_id': str(rfp.id),
+                'rfp_number': rfp.rfp_number,
+                'proposal_number': proposal.proposal_number,
+                'supplier_name': proposal.supplier.name,
+            }
+        )
+
+    @staticmethod
+    def notify_proposal_shortlisted(proposal: Proposal):
+        """
+        Notify supplier when their proposal is shortlisted.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        rfp = proposal.rfp
+
+        # Get all portal users for this supplier
+        portal_users = PortalUser.objects.filter(
+            supplier=proposal.supplier,
+            is_active=True
+        ).select_related('user')
+
+        for portal_user in portal_users:
+            if portal_user.user:
+                Notification.create_notification(
+                    user=portal_user.user,
+                    notification_type='PROPOSAL_SHORTLISTED',
+                    title=f'Your Proposal Has Been Shortlisted',
+                    message=f'Your proposal for RFP #{rfp.rfp_number} ({rfp.title}) has been shortlisted. '
+                            f'You may be contacted for further evaluation or a BAFO request.',
+                    priority='HIGH',
+                    related_object_type='proposal',
+                    related_object_id=proposal.id,
+                    link=f'/portal/rfps/{rfp.id}',
+                    metadata={
+                        'rfp_id': str(rfp.id),
+                        'rfp_number': rfp.rfp_number,
+                        'proposal_number': proposal.proposal_number,
+                    }
+                )
+
+    @staticmethod
+    def notify_bafo_requested(bafo_round: BAFORound):
+        """
+        Notify suppliers when a BAFO round is opened.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        rfp = bafo_round.rfp
+
+        # Get all shortlisted/BAFO requested proposals
+        proposals = rfp.proposals.filter(
+            status__in=['SHORTLISTED', 'BAFO_REQUESTED']
+        ).select_related('supplier')
+
+        for proposal in proposals:
+            # Update proposal status
+            proposal.status = 'BAFO_REQUESTED'
+            proposal.save(update_fields=['status', 'updated_at'])
+
+            # Get all portal users for this supplier
+            portal_users = PortalUser.objects.filter(
+                supplier=proposal.supplier,
+                is_active=True
+            ).select_related('user')
+
+            for portal_user in portal_users:
+                if portal_user.user:
+                    Notification.create_notification(
+                        user=portal_user.user,
+                        notification_type='BAFO_REQUESTED',
+                        title=f'BAFO Request: {rfp.title}',
+                        message=f'A Best and Final Offer (BAFO) has been requested for RFP #{rfp.rfp_number}. '
+                                f'Please submit your revised offer by '
+                                f'{bafo_round.deadline.strftime("%Y-%m-%d %H:%M") if bafo_round.deadline else "the specified deadline"}.',
+                        priority='URGENT',
+                        related_object_type='bafo_round',
+                        related_object_id=bafo_round.id,
+                        link=f'/portal/rfps/{rfp.id}',
+                        metadata={
+                            'rfp_id': str(rfp.id),
+                            'rfp_number': rfp.rfp_number,
+                            'bafo_round_number': bafo_round.round_number,
+                            'deadline': bafo_round.deadline.isoformat() if bafo_round.deadline else None,
+                            'focus_areas': bafo_round.focus_areas,
+                        }
+                    )
+
+    @staticmethod
+    def notify_bafo_received(bafo_response):
+        """
+        Notify RFP owner when a BAFO response is submitted.
+        """
+        from apps.core.models import Notification
+
+        rfp = bafo_response.proposal.rfp
+
+        Notification.create_notification(
+            user=rfp.created_by,
+            notification_type='BAFO_RECEIVED',
+            title=f'BAFO Response Received: {rfp.title}',
+            message=f'{bafo_response.proposal.supplier.name} has submitted their BAFO response '
+                    f'for RFP #{rfp.rfp_number} (Round {bafo_response.bafo_round.round_number}).',
+            priority='NORMAL',
+            related_object_type='bafo_response',
+            related_object_id=bafo_response.id,
+            link=f'/rfps/{rfp.id}?tab=bafo',
+            metadata={
+                'rfp_id': str(rfp.id),
+                'rfp_number': rfp.rfp_number,
+                'proposal_number': bafo_response.proposal.proposal_number,
+                'supplier_name': bafo_response.proposal.supplier.name,
+                'round_number': bafo_response.bafo_round.round_number,
+            }
+        )
+
+    @staticmethod
+    def notify_qa_answered(qa):
+        """
+        Notify supplier when their Q&A question is answered.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        rfp = qa.rfp
+
+        if qa.visibility == 'ALL_BIDDERS':
+            # Notify all invited suppliers
+            invitations = rfp.invitations.select_related('supplier')
+            suppliers = [inv.supplier for inv in invitations]
+        elif qa.visibility == 'PRIVATE' and qa.supplier:
+            # Notify only the asking supplier
+            suppliers = [qa.supplier]
+        else:
+            # Public - notify all invited
+            invitations = rfp.invitations.select_related('supplier')
+            suppliers = [inv.supplier for inv in invitations]
+
+        for supplier in suppliers:
+            portal_users = PortalUser.objects.filter(
+                supplier=supplier,
+                is_active=True
+            ).select_related('user')
+
+            for portal_user in portal_users:
+                if portal_user.user:
+                    Notification.create_notification(
+                        user=portal_user.user,
+                        notification_type='RFP_QA_ANSWERED',
+                        title=f'Q&A Update: {rfp.title}',
+                        message=f'A question has been answered for RFP #{rfp.rfp_number}.',
+                        priority='NORMAL',
+                        related_object_type='rfp_qa',
+                        related_object_id=qa.id,
+                        link=f'/portal/rfps/{rfp.id}?tab=qa',
+                        metadata={
+                            'rfp_id': str(rfp.id),
+                            'rfp_number': rfp.rfp_number,
+                        }
+                    )
+
+    @staticmethod
+    def notify_proposal_awarded(proposal: Proposal):
+        """
+        Notify supplier when their proposal is awarded.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        rfp = proposal.rfp
+
+        # Get all portal users for this supplier
+        portal_users = PortalUser.objects.filter(
+            supplier=proposal.supplier,
+            is_active=True
+        ).select_related('user')
+
+        for portal_user in portal_users:
+            if portal_user.user:
+                Notification.create_notification(
+                    user=portal_user.user,
+                    notification_type='PROPOSAL_AWARDED',
+                    title=f'Congratulations! Your Proposal Has Been Awarded',
+                    message=f'Your proposal for RFP #{rfp.rfp_number} ({rfp.title}) has been awarded. '
+                            f'The procurement team will be in touch with next steps.',
+                    priority='HIGH',
+                    related_object_type='proposal',
+                    related_object_id=proposal.id,
+                    link=f'/portal/rfps/{rfp.id}',
+                    metadata={
+                        'rfp_id': str(rfp.id),
+                        'rfp_number': rfp.rfp_number,
+                        'proposal_number': proposal.proposal_number,
+                    }
+                )
+
+    @staticmethod
+    def notify_proposal_not_awarded(proposal: Proposal):
+        """
+        Notify supplier when their proposal is not awarded.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        rfp = proposal.rfp
+
+        # Get all portal users for this supplier
+        portal_users = PortalUser.objects.filter(
+            supplier=proposal.supplier,
+            is_active=True
+        ).select_related('user')
+
+        for portal_user in portal_users:
+            if portal_user.user:
+                Notification.create_notification(
+                    user=portal_user.user,
+                    notification_type='PROPOSAL_NOT_AWARDED',
+                    title=f'RFP Award Notification: {rfp.title}',
+                    message=f'Thank you for your proposal for RFP #{rfp.rfp_number}. '
+                            f'After careful evaluation, we have decided to proceed with another vendor. '
+                            f'We appreciate your participation and hope to work with you in the future.',
+                    priority='NORMAL',
+                    related_object_type='proposal',
+                    related_object_id=proposal.id,
+                    link=f'/portal/rfps/{rfp.id}',
+                    metadata={
+                        'rfp_id': str(rfp.id),
+                        'rfp_number': rfp.rfp_number,
+                        'proposal_number': proposal.proposal_number,
+                    }
+                )
+
+    @staticmethod
+    def notify_rfp_closed(rfp: RFP):
+        """
+        Notify all invited suppliers when an RFP is closed.
+        """
+        from apps.core.models import Notification
+        from apps.suppliers.models import PortalUser
+
+        invitations = rfp.invitations.select_related('supplier')
+
+        for invitation in invitations:
+            portal_users = PortalUser.objects.filter(
+                supplier=invitation.supplier,
+                is_active=True
+            ).select_related('user')
+
+            for portal_user in portal_users:
+                if portal_user.user:
+                    Notification.create_notification(
+                        user=portal_user.user,
+                        notification_type='RFP_CLOSED',
+                        title=f'RFP Closed: {rfp.title}',
+                        message=f'RFP #{rfp.rfp_number} has been closed. Thank you for your participation.',
+                        priority='NORMAL',
+                        related_object_type='rfp',
+                        related_object_id=rfp.id,
+                        link=f'/portal/rfps/{rfp.id}',
+                        metadata={
+                            'rfp_number': rfp.rfp_number,
+                        }
+                    )
+
+    @staticmethod
+    def notify_evaluation_complete(rfp: RFP):
+        """
+        Notify RFP owner when evaluation is complete (all evaluators scored).
+        """
+        from apps.core.models import Notification
+
+        Notification.create_notification(
+            user=rfp.created_by,
+            notification_type='RFP_EVALUATION_COMPLETE',
+            title=f'Evaluation Complete: {rfp.title}',
+            message=f'All evaluators have completed scoring for RFP #{rfp.rfp_number}. '
+                    f'You can now review the consensus scores and proceed with award.',
+            priority='HIGH',
+            related_object_type='rfp',
+            related_object_id=rfp.id,
+            link=f'/rfps/{rfp.id}?tab=evaluation',
+            metadata={
+                'rfp_number': rfp.rfp_number,
+            }
+        )
+
+
 # Import models for type hints
 from django.db import models

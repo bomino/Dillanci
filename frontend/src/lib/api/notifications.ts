@@ -25,6 +25,19 @@ const mockNotifications: Notification[] = [
   },
   {
     id: 'notif-2',
+    type: 'PROPOSAL_RECEIVED',
+    title: 'New Proposal Received: IT Modernization Project',
+    message: 'TechVentures Inc has submitted a proposal for RFP-2025-018. Proposal number: PROP-2025-042.',
+    status: 'UNREAD',
+    priority: 'NORMAL',
+    related_object_type: 'proposal',
+    related_object_id: 'prop-042',
+    link: '/rfps/rfp-018?tab=proposals',
+    read_at: null,
+    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
+  },
+  {
+    id: 'notif-3',
     type: 'BID_RECEIVED',
     title: 'New Bid Submitted',
     message: 'Acme Corp submitted a bid of $45,000 for RFQ-2025-042.',
@@ -37,20 +50,46 @@ const mockNotifications: Notification[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 min ago
   },
   {
-    id: 'notif-3',
-    type: 'APPROVAL_COMPLETED',
-    title: 'Purchase Order Approved',
-    message: 'PO-2025-089 for IT Equipment has been approved by Finance Manager.',
+    id: 'notif-4',
+    type: 'BAFO_RECEIVED',
+    title: 'BAFO Response Received: Enterprise Software RFP',
+    message: 'CloudSoft Solutions has submitted their BAFO response for RFP-2025-012 (Round 1).',
     status: 'UNREAD',
     priority: 'NORMAL',
-    related_object_type: 'purchase_order',
-    related_object_id: 'po-089',
-    link: '/purchase-orders/po-089',
+    related_object_type: 'bafo_response',
+    related_object_id: 'bafo-resp-001',
+    link: '/rfps/rfp-012?tab=bafo',
+    read_at: null,
+    created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
+  },
+  {
+    id: 'notif-5',
+    type: 'RFP_EVALUATION_COMPLETE',
+    title: 'Evaluation Complete: Healthcare Analytics Platform',
+    message: 'All evaluators have completed scoring for RFP-2025-007. You can now review the consensus scores and proceed with award.',
+    status: 'UNREAD',
+    priority: 'HIGH',
+    related_object_type: 'rfp',
+    related_object_id: 'rfp-007',
+    link: '/rfps/rfp-007?tab=evaluation',
     read_at: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
   },
   {
-    id: 'notif-4',
+    id: 'notif-6',
+    type: 'APPROVAL_COMPLETED',
+    title: 'Purchase Order Approved',
+    message: 'PO-2025-089 for IT Equipment has been approved by Finance Manager.',
+    status: 'READ',
+    priority: 'NORMAL',
+    related_object_type: 'purchase_order',
+    related_object_id: 'po-089',
+    link: '/purchase-orders/po-089',
+    read_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
+  },
+  {
+    id: 'notif-7',
     type: 'CONTRACT_EXPIRING',
     title: 'Contract Expiring Soon',
     message: 'Contract with TechSupply Inc expires in 30 days. Consider renewal.',
@@ -63,7 +102,7 @@ const mockNotifications: Notification[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
   },
   {
-    id: 'notif-5',
+    id: 'notif-8',
     type: 'GOODS_RECEIVED',
     title: 'Goods Receipt Posted',
     message: 'GR-2025-156 posted for PO-2025-078. Ready for invoice matching.',

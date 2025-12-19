@@ -80,6 +80,87 @@ export async function reactivateSupplier(id: string): Promise<Supplier> {
   return response.data;
 }
 
+// Portal invitation types
+export interface PortalInvitation {
+  id: string;
+  supplier: string;
+  supplier_name: string;
+  email: string;
+  token: string;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+  expires_at: string;
+  accepted_at: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+  personal_message: string;
+  registration_url: string | null;
+  created_at: string;
+}
+
+export interface PortalUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  access_status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+  last_login_at: string | null;
+  created_at: string;
+}
+
+export interface InviteToPortalPayload {
+  email: string;
+  personal_message?: string;
+}
+
+// Portal invitation API functions
+export async function inviteToPortal(supplierId: string, payload: InviteToPortalPayload): Promise<PortalInvitation> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/invite-to-portal/`, payload);
+  return response.data;
+}
+
+export async function fetchPortalInvitations(supplierId: string): Promise<PortalInvitation[]> {
+  const response = await apiClient.get(`/suppliers/${supplierId}/portal-invitations/`);
+  return response.data;
+}
+
+export async function fetchPortalUsers(supplierId: string): Promise<PortalUser[]> {
+  const response = await apiClient.get(`/suppliers/${supplierId}/portal-users/`);
+  return response.data;
+}
+
+// Portal user management API functions
+export async function suspendPortalUser(supplierId: string, userId: string): Promise<PortalUser> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/portal-users/${userId}/suspend/`);
+  return response.data;
+}
+
+export async function reactivatePortalUser(supplierId: string, userId: string): Promise<PortalUser> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/portal-users/${userId}/reactivate/`);
+  return response.data;
+}
+
+export async function changePortalUserRole(supplierId: string, userId: string, role: PortalUser['role']): Promise<PortalUser> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/portal-users/${userId}/change-role/`, { role });
+  return response.data;
+}
+
+export async function removePortalUser(supplierId: string, userId: string): Promise<void> {
+  await apiClient.delete(`/suppliers/${supplierId}/portal-users/${userId}/`);
+}
+
+// Portal invitation management API functions
+export async function resendInvitation(supplierId: string, invitationId: string): Promise<PortalInvitation> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/portal-invitations/${invitationId}/resend/`);
+  return response.data;
+}
+
+export async function revokeInvitation(supplierId: string, invitationId: string): Promise<PortalInvitation> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/portal-invitations/${invitationId}/revoke/`);
+  return response.data;
+}
+
 // React Query Hooks
 
 // List suppliers with filters and pagination
@@ -189,6 +270,112 @@ export function useReactivateSupplier() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       queryClient.invalidateQueries({ queryKey: ['suppliers', id] });
+    },
+  });
+}
+
+// Invite to portal mutation
+export function useInviteToPortal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, payload }: { supplierId: string; payload: InviteToPortalPayload }) =>
+      inviteToPortal(supplierId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-invitations'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-users'] });
+    },
+  });
+}
+
+// Get portal invitations for a supplier
+export function usePortalInvitations(supplierId: string | undefined) {
+  return useQuery({
+    queryKey: ['suppliers', supplierId, 'portal-invitations'],
+    queryFn: () => fetchPortalInvitations(supplierId!),
+    enabled: !!supplierId,
+  });
+}
+
+// Get portal users for a supplier
+export function usePortalUsers(supplierId: string | undefined) {
+  return useQuery({
+    queryKey: ['suppliers', supplierId, 'portal-users'],
+    queryFn: () => fetchPortalUsers(supplierId!),
+    enabled: !!supplierId,
+  });
+}
+
+// Portal user management mutations
+export function useSuspendPortalUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, userId }: { supplierId: string; userId: string }) =>
+      suspendPortalUser(supplierId, userId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-users'] });
+    },
+  });
+}
+
+export function useReactivatePortalUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, userId }: { supplierId: string; userId: string }) =>
+      reactivatePortalUser(supplierId, userId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-users'] });
+    },
+  });
+}
+
+export function useChangePortalUserRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, userId, role }: { supplierId: string; userId: string; role: PortalUser['role'] }) =>
+      changePortalUserRole(supplierId, userId, role),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-users'] });
+    },
+  });
+}
+
+export function useRemovePortalUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, userId }: { supplierId: string; userId: string }) =>
+      removePortalUser(supplierId, userId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-users'] });
+    },
+  });
+}
+
+// Portal invitation management mutations
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, invitationId }: { supplierId: string; invitationId: string }) =>
+      resendInvitation(supplierId, invitationId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-invitations'] });
+    },
+  });
+}
+
+export function useRevokeInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ supplierId, invitationId }: { supplierId: string; invitationId: string }) =>
+      revokeInvitation(supplierId, invitationId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers', variables.supplierId, 'portal-invitations'] });
     },
   });
 }

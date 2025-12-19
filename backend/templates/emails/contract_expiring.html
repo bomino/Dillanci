@@ -1,0 +1,83 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Contract Expiring Soon - {{ contract_number }}{% endblock %}
+
+{% block container_class %}{% if days_until_expiry <= 7 %} priority-urgent{% else %} priority-high{% endif %}{% endblock %}
+
+{% block content %}
+<h1 class="email-title">Contract Expiring Soon</h1>
+
+<div class="email-body">
+    <p>Hi {{ recipient_name }},</p>
+    <p>
+        This is a reminder that the following contract is expiring
+        <strong>{% if days_until_expiry == 1 %}tomorrow{% elif days_until_expiry == 0 %}today{% else %}in {{ days_until_expiry }} days{% endif %}</strong>.
+        {% if auto_renew %}This contract is set to auto-renew.{% else %}Please review and take appropriate action.{% endif %}
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">Contract Number</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ contract_number }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Title</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ contract_title }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Contract Value</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ currency }} {{ total_value|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Expiry Date</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ end_date }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Status</td>
+            <td style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                <span class="status-badge status-expiring">
+                    {% if days_until_expiry <= 7 %}Expiring Soon{% else %}Review Required{% endif %}
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Auto-Renew</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">
+                {% if auto_renew %}Yes{% else %}No{% endif %}
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% if utilization_percent %}
+<div class="email-body">
+    <p><strong>Contract Utilization:</strong> {{ utilization_percent|floatformat:1 }}% of {{ currency }} {{ total_value|floatformat:2 }}</p>
+</div>
+{% endif %}
+
+<div class="email-body">
+    <p><strong>Recommended Actions:</strong></p>
+    <ul style="color: #525252; padding-left: 20px;">
+        <li>Review contract terms and supplier performance</li>
+        <li>Evaluate whether to renew, renegotiate, or let expire</li>
+        <li>Coordinate with stakeholders if renewal is needed</li>
+        {% if not auto_renew %}<li>Initiate renewal process if continuing</li>{% endif %}
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">Review Contract</a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        You're receiving this email because you're listed as the owner of this contract.
+    </p>
+</div>
+{% endblock %}

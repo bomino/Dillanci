@@ -36,7 +36,10 @@ class RFPQuestionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'section', 'question_number', 'question_text',
             'question_type', 'options', 'is_required', 'max_score',
-            'scoring_guidance', 'order', 'created_at', 'updated_at',
+            'scoring_guidance', 'order',
+            # Compliance tracking fields
+            'is_mandatory_attachment', 'attachment_type', 'min_attachments',
+            'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -49,6 +52,8 @@ class RFPQuestionCreateSerializer(serializers.ModelSerializer):
         fields = [
             'question_text', 'question_type', 'options', 'is_required',
             'max_score', 'scoring_guidance', 'order',
+            # Compliance tracking fields
+            'is_mandatory_attachment', 'attachment_type', 'min_attachments',
         ]
 
 
@@ -173,6 +178,9 @@ class RFPSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source='get_status_display', read_only=True
     )
+    ip_ownership_display = serializers.CharField(
+        source='get_ip_ownership_display', read_only=True
+    )
     total_section_weight = serializers.DecimalField(
         max_digits=5, decimal_places=2, read_only=True
     )
@@ -182,15 +190,31 @@ class RFPSerializer(serializers.ModelSerializer):
     class Meta:
         model = RFP
         fields = [
+            # Core fields
             'id', 'number', 'organization', 'organization_name',
             'created_by', 'created_by_name', 'title', 'description',
             'status', 'status_display', 'rfp_type', 'estimated_value',
+            'bidding_type', 'visibility', 'requisition', 'notes',
+            # Project Overview fields (Essential RFP Section 1)
+            'executive_summary', 'current_state_description',
+            'future_state_goals', 'organization_context',
+            # Timeline fields (Essential RFP Section 4)
             'publish_date', 'question_deadline', 'response_deadline',
-            'evaluation_start_date', 'award_target_date', 'bidding_type',
-            'visibility', 'awarded_supplier', 'awarded_supplier_name',
-            'awarded_proposal', 'awarded_date', 'requisition', 'notes',
+            'evaluation_start_date', 'award_target_date',
+            'qa_session_date', 'shortlist_announcement_date',
+            'contract_start_date', 'contract_end_date',
+            # Budget Framework fields (Essential RFP Section 5)
+            'budget_min', 'budget_max', 'currency',
+            # Terms & Conditions fields (Essential RFP Section 7)
+            'nda_required', 'payment_terms', 'ip_ownership', 'ip_ownership_display',
+            'insurance_requirements', 'confidentiality_terms',
+            # Award info
+            'awarded_supplier', 'awarded_supplier_name',
+            'awarded_proposal', 'awarded_date',
+            # Related data
             'sections', 'criteria', 'line_items', 'total_section_weight',
             'proposal_count', 'invitation_count',
+            # Timestamps
             'created_at', 'updated_at',
         ]
         read_only_fields = [
@@ -214,10 +238,22 @@ class RFPCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RFP
         fields = [
+            # Core fields
             'organization', 'created_by', 'title', 'description',
-            'rfp_type', 'estimated_value', 'question_deadline',
-            'response_deadline', 'award_target_date', 'bidding_type',
+            'rfp_type', 'estimated_value', 'bidding_type',
             'visibility', 'requisition', 'notes', 'sections',
+            # Project Overview fields (Essential RFP Section 1)
+            'executive_summary', 'current_state_description',
+            'future_state_goals', 'organization_context',
+            # Timeline fields (Essential RFP Section 4)
+            'question_deadline', 'response_deadline', 'award_target_date',
+            'qa_session_date', 'shortlist_announcement_date',
+            'contract_start_date', 'contract_end_date',
+            # Budget Framework fields (Essential RFP Section 5)
+            'budget_min', 'budget_max', 'currency',
+            # Terms & Conditions fields (Essential RFP Section 7)
+            'nda_required', 'payment_terms', 'ip_ownership',
+            'insurance_requirements', 'confidentiality_terms',
         ]
 
     def create(self, validated_data):
@@ -244,19 +280,25 @@ class RFPListSerializer(serializers.ModelSerializer):
         source='get_status_display', read_only=True
     )
     proposal_count = serializers.SerializerMethodField()
+    invitation_count = serializers.SerializerMethodField()
 
     class Meta:
         model = RFP
         fields = [
             'id', 'number', 'organization', 'organization_name',
             'title', 'status', 'status_display', 'rfp_type',
-            'estimated_value', 'response_deadline', 'proposal_count',
+            'estimated_value', 'budget_min', 'budget_max', 'currency',
+            'response_deadline', 'award_target_date',
+            'proposal_count', 'invitation_count',
             'created_at',
         ]
         read_only_fields = fields
 
     def get_proposal_count(self, obj):
         return obj.proposals.count()
+
+    def get_invitation_count(self, obj):
+        return obj.invitations.count()
 
 
 # ============ Invitation Serializers ============

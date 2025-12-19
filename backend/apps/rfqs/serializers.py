@@ -294,32 +294,75 @@ class RFQSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source='get_status_display', read_only=True
     )
+    bid_type_display = serializers.CharField(
+        source='get_bid_type_display', read_only=True
+    )
+    payment_terms_display = serializers.CharField(
+        source='get_payment_terms_display', read_only=True
+    )
 
     class Meta:
         model = RFQ
         fields = [
+            # Basic Information
             'id',
             'organization',
             'organization_name',
             'number',
             'title',
             'description',
+            'bid_type',
+            'bid_type_display',
             'created_by',
             'created_by_name',
             'created_by_email',
             'status',
             'status_display',
-            'total_amount',
+            # Buyer Contact
+            'buyer_name',
+            'buyer_email',
+            'buyer_phone',
+            'department',
+            # Project Background
+            'project_background',
+            # Critical Timelines
+            'issue_date',
+            'qa_deadline',
+            'submission_deadline',
+            'expected_award_date',
             'open_date',
             'close_date',
             'awarded_date',
+            # Commercial Terms
+            'payment_terms',
+            'payment_terms_display',
+            'payment_terms_notes',
+            'contract_duration_months',
+            'contract_renewal_options',
+            'currency',
+            # Delivery Requirements
+            'delivery_address',
+            'delivery_terms',
+            'required_delivery_date',
+            # Evaluation Criteria
+            'evaluation_criteria',
+            'required_certifications',
+            'required_attachments_description',
+            # Terms and Conditions
+            'terms_and_conditions',
+            'nda_required',
+            # Financial
+            'total_amount',
+            # Award Info
             'awarded_supplier',
             'awarded_supplier_name',
             'awarded_bid',
+            # Relations
             'requisition',
             'requisition_number',
             'lines',
             'invitations',
+            # Timestamps
             'created_at',
             'updated_at',
         ]
@@ -329,7 +372,6 @@ class RFQSerializer(serializers.ModelSerializer):
             'status',
             'total_amount',
             'open_date',
-            'close_date',
             'awarded_date',
             'awarded_supplier',
             'awarded_bid',
@@ -342,24 +384,95 @@ class RFQCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating RFQs."""
 
     lines = RFQLineCreateSerializer(many=True, required=False)
+    invited_suppliers = serializers.ListField(
+        child=serializers.UUIDField(),
+        required=False,
+        write_only=True,
+        help_text='List of supplier IDs to invite'
+    )
 
     class Meta:
         model = RFQ
         fields = [
-            'organization',
+            # Basic Information
             'title',
             'description',
-            'created_by',
+            'bid_type',
+            # Buyer Contact
+            'buyer_name',
+            'buyer_email',
+            'buyer_phone',
+            'department',
+            # Project Background
+            'project_background',
+            # Critical Timelines
+            'qa_deadline',
+            'submission_deadline',
+            'expected_award_date',
+            'close_date',
+            # Commercial Terms
+            'payment_terms',
+            'payment_terms_notes',
+            'contract_duration_months',
+            'contract_renewal_options',
+            'currency',
+            # Delivery Requirements
+            'delivery_address',
+            'delivery_terms',
+            'required_delivery_date',
+            # Evaluation Criteria
+            'evaluation_criteria',
+            'required_certifications',
+            'required_attachments_description',
+            # Terms and Conditions
+            'terms_and_conditions',
+            'nda_required',
+            # Relations
             'requisition',
             'lines',
+            'invited_suppliers',
         ]
 
     def create(self, validated_data):
+        from apps.suppliers.models import Supplier
+
         lines_data = validated_data.pop('lines', [])
+        invited_supplier_ids = validated_data.pop('invited_suppliers', [])
+
+        # Get user from context
+        request = self.context.get('request')
+        user = request.user
+
+        # Set organization and created_by from user context
+        validated_data['organization'] = user.organization
+        validated_data['created_by'] = user
+
+        # Auto-populate buyer info from user if not provided
+        if not validated_data.get('buyer_name'):
+            validated_data['buyer_name'] = user.full_name
+        if not validated_data.get('buyer_email'):
+            validated_data['buyer_email'] = user.email
+
         rfq = RFQ.objects.create(**validated_data)
 
+        # Create line items
         for line_data in lines_data:
             RFQLine.objects.create(rfq=rfq, **line_data)
+
+        # Create supplier invitations
+        for supplier_id in invited_supplier_ids:
+            try:
+                supplier = Supplier.objects.get(
+                    id=supplier_id,
+                    organization=user.organization
+                )
+                SupplierInvitation.objects.create(
+                    rfq=rfq,
+                    supplier=supplier,
+                    invited_by=user
+                )
+            except Supplier.DoesNotExist:
+                pass  # Skip invalid supplier IDs
 
         return rfq
 
@@ -376,6 +489,15 @@ class RFQListSerializer(serializers.ModelSerializer):
     total_amount = serializers.DecimalField(
         max_digits=14, decimal_places=2, read_only=True
     )
+    bid_type_display = serializers.CharField(
+        source='get_bid_type_display', read_only=True
+    )
+    invitation_count = serializers.IntegerField(
+        source='invitations.count', read_only=True
+    )
+    bid_count = serializers.IntegerField(
+        source='bids.count', read_only=True
+    )
 
     class Meta:
         model = RFQ
@@ -388,9 +510,14 @@ class RFQListSerializer(serializers.ModelSerializer):
             'created_by',
             'created_by_name',
             'status',
+            'bid_type',
+            'bid_type_display',
             'total_amount',
+            'submission_deadline',
             'open_date',
             'close_date',
+            'invitation_count',
+            'bid_count',
             'created_at',
         ]
 

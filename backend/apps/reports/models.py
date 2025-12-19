@@ -344,6 +344,16 @@ class DashboardKPI(models.Model):
         ('EXPIRING_CONTRACTS_90D', 'Expiring Contracts 90 Days'),
         ('INVOICE_MATCH_RATE', 'Invoice Match Rate %'),
         ('ON_TIME_DELIVERY_RATE', 'On-Time Delivery Rate %'),
+        # RFP-specific KPIs
+        ('RFP_OPEN_COUNT', 'Open RFPs'),
+        ('RFP_PROPOSALS_RECEIVED', 'Proposals Received'),
+        ('RFP_AVG_EVALUATION_SCORE', 'Avg Evaluation Score'),
+        ('RFP_BAFO_ROUNDS_ACTIVE', 'Active BAFO Rounds'),
+        ('RFP_TIME_TO_AWARD_AVG', 'Avg Time to Award Days'),
+        ('RFP_SUPPLIER_RESPONSE_RATE', 'Supplier Response Rate %'),
+        ('RFP_EVALUATION_COMPLETION_RATE', 'Evaluation Completion Rate %'),
+        ('RFP_AWARDED_VALUE_MTD', 'RFP Awarded Value MTD'),
+        ('RFP_AWARDED_VALUE_YTD', 'RFP Awarded Value YTD'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

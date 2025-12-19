@@ -276,6 +276,51 @@ class PurchaseOrderViewSet(BulkActionMixin, ExportMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    @action(detail=False, methods=['post'], url_path='from-proposal')
+    def create_from_proposal(self, request):
+        """
+        Create a PO from an awarded RFP proposal.
+
+        Request body:
+        - proposal_id: UUID of the awarded proposal
+        - budget_line_id: UUID of the budget line to charge
+        - contract_id: (Optional) UUID of the contract to link
+        """
+        from django.shortcuts import get_object_or_404
+        from apps.rfps.models import Proposal
+        from apps.contracts.models import Contract
+
+        proposal_id = request.data.get('proposal_id')
+        budget_line_id = request.data.get('budget_line_id')
+        contract_id = request.data.get('contract_id')
+
+        if not proposal_id or not budget_line_id:
+            return Response(
+                {'error': 'Both proposal_id and budget_line_id are required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        proposal = get_object_or_404(Proposal, id=proposal_id)
+        budget_line = get_object_or_404(BudgetLine, id=budget_line_id)
+        contract = get_object_or_404(Contract, id=contract_id) if contract_id else None
+
+        try:
+            po = PurchaseOrder.create_from_proposal(
+                proposal=proposal,
+                budget_line=budget_line,
+                created_by=request.user,
+                contract=contract,
+            )
+            return Response(
+                PurchaseOrderSerializer(po).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
 class POLineViewSet(viewsets.ModelViewSet):
     """

@@ -13,17 +13,18 @@ This document provides step-by-step instructions for end-to-end testing of the D
 5. [Supplier Management Testing](#supplier-management-testing)
 6. [Requisition Workflow Testing](#requisition-workflow-testing)
 7. [RFQ Workflow Testing](#rfq-workflow-testing)
-8. [RFP Workflow Testing](#rfp-workflow-testing)
-9. [Purchase Order Workflow Testing](#purchase-order-workflow-testing)
+8. [RFP Workflow Testing](#rfp-workflow-testing) *(Enhanced: BAFO, Q&A, Compliance, Multi-Evaluator)*
+9. [Purchase Order Workflow Testing](#purchase-order-workflow-testing) *(Enhanced: PO from RFP)*
 10. [Receiving (Goods Receipt) Testing](#receiving-goods-receipt-testing)
 11. [Invoice & 3-Way Match Testing](#invoice--3-way-match-testing)
-12. [Contract Management Testing](#contract-management-testing)
-13. [Notifications Testing](#notifications-testing)
-14. [Reports & Dashboard Testing](#reports--dashboard-testing)
+12. [Contract Management Testing](#contract-management-testing) *(Enhanced: Contract from RFP)*
+13. [Notifications Testing](#notifications-testing) *(Enhanced: RFP notifications)*
+14. [Reports & Dashboard Testing](#reports--dashboard-testing) *(Enhanced: RFP KPIs)*
 15. [Admin Panel Testing](#admin-panel-testing)
 16. [API Testing](#api-testing)
 17. [Cross-Cutting Features Testing](#cross-cutting-features-testing)
-18. [Test Data Cleanup](#test-data-cleanup)
+18. [Supplier Portal Testing](#supplier-portal-testing) *(New)*
+19. [Test Data Cleanup](#test-data-cleanup)
 
 ---
 
@@ -645,11 +646,121 @@ All 6 containers running:
 - Winner notification
 - "Create Contract" option available
 
+### TC-067: Configure BAFO Round
+
+**Steps:**
+1. Open RFP in Evaluation status with shortlisted proposals
+2. Go to BAFO tab
+3. Click "Start BAFO Round"
+4. Enter BAFO details:
+   - Instructions: "Please provide your best pricing"
+   - Focus Areas: ["Pricing", "Timeline"]
+   - Deadline: (3 days from today)
+5. Click "Create"
+
+**Expected Result:**
+- BAFO round created in "Draft" status
+- Shortlisted suppliers see BAFO request
+- Original proposals preserved for comparison
+
+### TC-068: Submit BAFO Response
+
+**Steps:**
+1. Login as supplier (via portal or simulated)
+2. Open RFP with BAFO request
+3. Submit revised proposal with new pricing/terms
+4. Click "Submit BAFO"
+
+**Expected Result:**
+- BAFO response status changes to "Submitted"
+- Original proposal preserved for comparison
+- Timestamp recorded
+
+### TC-069: Close BAFO Round
+
+**Steps:**
+1. After deadline passes or all responses received
+2. Open BAFO tab
+3. Click "Close BAFO Round"
+4. Review BAFO comparison
+
+**Expected Result:**
+- Round status changes to "Closed"
+- Comparison shows BAFO vs original proposals side-by-side
+- Price/terms differences highlighted
+
+### TC-070: Q&A Portal - Submit Question
+
+**Steps:**
+1. Open published RFP
+2. Go to Q&A tab
+3. Click "Ask Question"
+4. Enter question text: "What is the expected implementation timeline?"
+5. Submit
+
+**Expected Result:**
+- Question appears in list with "Pending" status
+- RFP owner receives notification
+- Question timestamp recorded
+
+### TC-071: Q&A Portal - Answer and Broadcast
+
+**Steps:**
+1. Open Q&A tab as RFP owner
+2. Click on pending question
+3. Enter answer
+4. Select "Broadcast to All Bidders"
+5. Click "Publish"
+
+**Expected Result:**
+- Answer published with timestamp
+- All invited suppliers can see Q&A
+- Amendment logged if terms affected
+- Notification sent to all bidders
+
+### TC-072: Compliance Matrix Check
+
+**Steps:**
+1. Open RFP with mandatory requirements defined
+2. Go to Proposals tab
+3. Check compliance indicators per proposal
+
+**Expected Result:**
+- Green checkmark for compliant proposals
+- Red X for missing mandatory items
+- Summary: "X of Y vendors compliant"
+- Non-compliant items listed per proposal
+
+### TC-073: Multi-Evaluator Scoring
+
+**Steps:**
+1. Assign 3 evaluators to RFP
+2. Each evaluator logs in and submits scores for each criterion
+3. View consensus/summary tab
+
+**Expected Result:**
+- Individual scores recorded per evaluator
+- Average/weighted scores calculated automatically
+- Ranking updated based on weighted scores
+- Score variance visible across evaluators
+
+### TC-074: Proposal Comparison Matrix
+
+**Steps:**
+1. Open RFP with multiple shortlisted proposals
+2. Go to Comparison tab
+
+**Expected Result:**
+- Side-by-side view of all proposals
+- Scores highlighted (best in green, worst in red)
+- Pricing totals compared
+- Key differentiators visible
+
 ---
 
 ## Purchase Order Workflow Testing
 
-### TC-070: Create PO from Awarded RFQ
+### TC-080: Create PO from Awarded RFQ
 
 **Steps:**
 1. Open awarded RFQ
@@ -666,7 +777,26 @@ All 6 containers running:
 - Linked to RFQ and requisition
 - Supplier auto-selected
 
-### TC-071: Create PO Manually
+### TC-081: Create PO from Awarded RFP Proposal
+
+**Steps:**
+1. Open awarded RFP
+2. Go to winning proposal
+3. Click "Create PO"
+4. Review pre-populated details:
+   - Supplier from winning proposal
+   - Line items from proposal
+   - Pricing from proposal
+5. Select budget line
+6. Click "Create"
+
+**Expected Result:**
+- PO created in "Draft" status
+- Linked to RFP and Proposal
+- Line items copied from proposal
+- Pricing matches proposal
+
+### TC-082: Create PO Manually
 
 **Steps:**
 1. Navigate to Purchase Orders
@@ -681,7 +811,7 @@ All 6 containers running:
 - PO created with "Draft" status
 - PO number assigned
 
-### TC-072: Submit PO for Approval
+### TC-083: Submit PO for Approval
 
 **Steps:**
 1. Open draft PO
@@ -693,7 +823,7 @@ All 6 containers running:
 - Status changes to "Submitted"
 - Pending approval indicator
 
-### TC-073: Approve PO
+### TC-084: Approve PO
 
 **Steps:**
 1. Login as procmgr@dillanci.com
@@ -705,7 +835,7 @@ All 6 containers running:
 - Status changes to "Approved"
 - Ready to send to supplier
 
-### TC-074: Send PO to Supplier
+### TC-085: Send PO to Supplier
 
 **Steps:**
 1. Open approved PO
@@ -717,7 +847,7 @@ All 6 containers running:
 - Sent timestamp recorded
 - PDF generated (if applicable)
 
-### TC-075: Export PO to PDF
+### TC-086: Export PO to PDF
 
 **Steps:**
 1. Open any PO
@@ -729,7 +859,7 @@ All 6 containers running:
 - Contains all PO details
 - Company letterhead/branding
 
-### TC-076: Record Partial Receipt on PO
+### TC-087: Record Partial Receipt on PO
 
 **Steps:**
 1. Open sent PO
@@ -747,7 +877,7 @@ All 6 containers running:
 
 ## Receiving (Goods Receipt) Testing
 
-### TC-080: Create Goods Receipt
+### TC-090: Create Goods Receipt
 
 **Steps:**
 1. Login as warehouse@dillanci.com
@@ -766,7 +896,7 @@ All 6 containers running:
 - GRN number assigned
 - Linked to PO
 
-### TC-081: Post Goods Receipt
+### TC-091: Post Goods Receipt
 
 **Steps:**
 1. Open draft GRN
@@ -779,7 +909,7 @@ All 6 containers running:
 - PO quantities updated
 - Cannot edit after posting
 
-### TC-082: Record Quality Inspection
+### TC-092: Record Quality Inspection
 
 **Steps:**
 1. Open a GRN
@@ -795,7 +925,7 @@ All 6 containers running:
 - Inspection results recorded
 - Accepted/rejected quantities tracked
 
-### TC-083: Partial Receipt
+### TC-093: Partial Receipt
 
 **Steps:**
 1. Create GRN for a PO
@@ -807,7 +937,7 @@ All 6 containers running:
 - PO shows partially received
 - Remaining quantities available for future GRNs
 
-### TC-084: Complete Receipt
+### TC-094: Complete Receipt
 
 **Steps:**
 1. Record remaining quantities on PO
@@ -821,7 +951,7 @@ All 6 containers running:
 
 ## Invoice & 3-Way Match Testing
 
-### TC-090: Create Invoice
+### TC-100: Create Invoice
 
 **Steps:**
 1. Login as ap@dillanci.com
@@ -840,7 +970,7 @@ All 6 containers running:
 - Invoice created in "Draft" status
 - Linked to PO
 
-### TC-091: Validate Invoice
+### TC-101: Validate Invoice
 
 **Steps:**
 1. Open draft invoice
@@ -851,7 +981,7 @@ All 6 containers running:
 - Status changes to "Validated"
 - Ready for matching
 
-### TC-092: Perform 3-Way Match (Pass)
+### TC-102: Perform 3-Way Match (Pass)
 
 **Steps:**
 1. Open validated invoice
@@ -865,7 +995,7 @@ All 6 containers running:
 - Status changes to "Matched"
 - Green checkmarks on comparison
 
-### TC-093: 3-Way Match with Variance
+### TC-103: 3-Way Match with Variance
 
 **Steps:**
 1. Create invoice with slightly different price (within tolerance)
@@ -876,7 +1006,7 @@ All 6 containers running:
 - Variance percentage shown
 - Flagged for review if over threshold
 
-### TC-094: 3-Way Match Failure
+### TC-104: 3-Way Match Failure
 
 **Steps:**
 1. Create invoice with major discrepancy:
@@ -890,7 +1020,7 @@ All 6 containers running:
 - Status changes to "Disputed"
 - Requires resolution
 
-### TC-095: Approve Matched Invoice
+### TC-105: Approve Matched Invoice
 
 **Steps:**
 1. Open matched invoice
@@ -901,7 +1031,7 @@ All 6 containers running:
 - Status changes to "Approved"
 - Ready for payment
 
-### TC-096: Mark Invoice as Paid
+### TC-106: Mark Invoice as Paid
 
 **Steps:**
 1. Open approved invoice
@@ -919,7 +1049,7 @@ All 6 containers running:
 
 ## Contract Management Testing
 
-### TC-100: Create Contract
+### TC-110: Create Contract
 
 **Steps:**
 1. Navigate to Contracts
@@ -939,7 +1069,26 @@ All 6 containers running:
 - Contract created in "Draft" status
 - Contract number assigned
 
-### TC-101: Submit Contract for Approval
+### TC-111: Create Contract from Awarded RFP
+
+**Steps:**
+1. Open an awarded RFP
+2. Click "Create Contract"
+3. Review pre-populated details:
+   - Supplier from winning proposal
+   - Value from proposal total
+   - Terms from RFP
+   - Scope from proposal
+4. Adjust contract dates and terms as needed
+5. Click "Create"
+
+**Expected Result:**
+- Contract created in "Draft" status
+- Linked to RFP and Proposal
+- Key terms pre-populated from RFP
+- Supplier auto-selected from winning proposal
+
+### TC-112: Submit Contract for Approval
 
 **Steps:**
 1. Open draft contract
@@ -949,7 +1098,7 @@ All 6 containers running:
 - Status changes to "Pending Approval"
 - Sent to appropriate approver
 
-### TC-102: Approve Contract
+### TC-113: Approve Contract
 
 **Steps:**
 1. Login as approver
@@ -960,7 +1109,7 @@ All 6 containers running:
 - Status changes to "Active"
 - Start date tracking begins
 
-### TC-103: Track Contract Spend
+### TC-114: Track Contract Spend
 
 **Steps:**
 1. Open active contract
@@ -972,7 +1121,7 @@ All 6 containers running:
 - Utilization percentage calculated
 - Remaining value shown
 
-### TC-104: Renew Expiring Contract
+### TC-115: Renew Expiring Contract
 
 **Steps:**
 1. Find contract near expiration
@@ -985,7 +1134,7 @@ All 6 containers running:
 - Or existing contract extended
 - History preserved
 
-### TC-105: Terminate Contract
+### TC-116: Terminate Contract
 
 **Steps:**
 1. Open active contract
@@ -1002,7 +1151,7 @@ All 6 containers running:
 
 ## Notifications Testing
 
-### TC-110: View Notifications
+### TC-120: View Notifications
 
 **Steps:**
 1. Login as any user with notifications
@@ -1013,7 +1162,7 @@ All 6 containers running:
 - Unread count displayed on bell
 - Unread notifications highlighted
 
-### TC-111: Mark Notification as Read
+### TC-121: Mark Notification as Read
 
 **Steps:**
 1. Open notifications dropdown
@@ -1024,7 +1173,7 @@ All 6 containers running:
 - Unread count decreases
 - Navigates to related item
 
-### TC-112: Mark All as Read
+### TC-122: Mark All as Read
 
 **Steps:**
 1. Open notifications dropdown
@@ -1034,7 +1183,7 @@ All 6 containers running:
 - All notifications marked read
 - Badge count becomes 0
 
-### TC-113: Receive Approval Notification
+### TC-123: Receive Approval Notification
 
 **Steps:**
 1. Login as requester@dillanci.com
@@ -1048,7 +1197,7 @@ All 6 containers running:
 - Correct type and message
 - Link navigates to requisition
 
-### TC-114: Test Notification API
+### TC-124: Test Notification API
 
 **Steps:**
 1. Using browser dev tools or curl:
@@ -1066,11 +1215,26 @@ All 6 containers running:
 }
 ```
 
+### TC-125: RFP Notification Types
+
+**Steps:**
+1. Test each RFP notification type:
+   - Publish RFP → Notification to invited suppliers
+   - Submit proposal → Notification to RFP owner
+   - Start BAFO → Notification to shortlisted vendors
+   - Award RFP → Notification to winner and non-winners
+   - Q&A broadcast → Notification to all bidders
+
+**Expected Result:**
+- Each action triggers appropriate notification
+- Correct recipients receive notifications
+- Notification links navigate to relevant page
+
 ---
 
 ## Reports & Dashboard Testing
 
-### TC-120: View Dashboard
+### TC-130: View Dashboard
 
 **Steps:**
 1. Login and navigate to Dashboard (home page)
@@ -1082,7 +1246,7 @@ All 6 containers running:
 - Pending Actions list
 - Recent Activity feed
 
-### TC-121: Dashboard KPI Drill-down
+### TC-131: Dashboard KPI Drill-down
 
 **Steps:**
 1. Click on "Open POs" KPI card
@@ -1091,7 +1255,7 @@ All 6 containers running:
 - Navigates to filtered PO list
 - Shows only open POs
 
-### TC-122: View Reports Page
+### TC-132: View Reports Page
 
 **Steps:**
 1. Navigate to Reports
@@ -1100,7 +1264,7 @@ All 6 containers running:
 - Multiple chart types displayed
 - Filters available (date range, category)
 
-### TC-123: Apply Date Range Filter
+### TC-133: Apply Date Range Filter
 
 **Steps:**
 1. On Reports page
@@ -1112,7 +1276,7 @@ All 6 containers running:
 - All charts update with filtered data
 - Date range shown in filter
 
-### TC-124: Export Report
+### TC-134: Export Report
 
 **Steps:**
 1. On Reports page
@@ -1123,11 +1287,48 @@ All 6 containers running:
 - Report downloads in selected format
 - Contains visible data
 
+### TC-135: RFP Dashboard KPIs
+
+**Steps:**
+1. Navigate to Dashboard
+2. Check for RFP-specific KPI cards
+
+**Expected Result:**
+These KPIs should display (if data exists):
+- Open RFPs count
+- Proposals Received (MTD)
+- Avg Evaluation Score
+- Active BAFO Rounds
+- Supplier Response Rate %
+- Evaluation Completion Rate %
+- RFP Awarded Value (MTD/YTD)
+- Avg Time to Award (days)
+
+### TC-136: RFP KPI API
+
+**Steps:**
+1. Call GET /api/v1/reports/kpis/
+2. Review KPI types returned
+
+**Expected Result:**
+- All 21 KPI types returned (12 core + 9 RFP-specific)
+- RFP KPIs include:
+  - open_rfps
+  - proposals_received_mtd
+  - avg_evaluation_score
+  - active_bafo_rounds
+  - supplier_response_rate
+  - evaluation_completion_rate
+  - rfp_awarded_value_mtd
+  - rfp_awarded_value_ytd
+  - avg_time_to_award
+- Values calculated correctly based on data
+
 ---
 
 ## Admin Panel Testing
 
-### TC-130: Access Django Admin
+### TC-140: Access Django Admin
 
 **Steps:**
 1. Navigate to http://localhost:8000/admin/
@@ -1138,7 +1339,7 @@ All 6 containers running:
 - All registered models visible
 - Dillanci branding applied
 
-### TC-131: View/Edit User in Admin
+### TC-141: View/Edit User in Admin
 
 **Steps:**
 1. In admin, click Users
@@ -1150,7 +1351,7 @@ All 6 containers running:
 - User updated
 - Change logged in history
 
-### TC-132: View Audit Logs
+### TC-142: View Audit Logs
 
 **Steps:**
 1. Navigate to Admin > Audit Logs
@@ -1160,7 +1361,7 @@ All 6 containers running:
 - Filterable by user, action, date
 - Details show old/new values
 
-### TC-133: Configure Approval Thresholds
+### TC-143: Configure Approval Thresholds
 
 **Steps:**
 1. Navigate to Admin > Workflows
@@ -1175,7 +1376,7 @@ All 6 containers running:
 - Threshold created
 - Applied to new requisitions in that range
 
-### TC-134: Admin Logout Redirect
+### TC-144: Admin Logout Redirect
 
 **Steps:**
 1. In Django admin, click "Log out"
@@ -1190,7 +1391,7 @@ All 6 containers running:
 
 Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 
-### TC-140: API Authentication
+### TC-150: API Authentication
 
 **Steps:**
 1. Call API without authentication:
@@ -1201,7 +1402,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 **Expected Result:**
 - 401 Unauthorized or 403 Forbidden
 
-### TC-141: List Requisitions API
+### TC-151: List Requisitions API
 
 **Steps:**
 1. Login via Swagger "Authorize"
@@ -1212,7 +1413,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - JSON array of requisitions
 - Pagination info included
 
-### TC-142: Create Requisition API
+### TC-152: Create Requisition API
 
 **Steps:**
 1. Call POST /api/v1/requisitions/
@@ -1229,7 +1430,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - 201 Created
 - Returns created requisition
 
-### TC-143: CSRF Protection
+### TC-153: CSRF Protection
 
 **Steps:**
 1. Try POST without CSRF token (from different origin)
@@ -1238,7 +1439,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - 403 Forbidden
 - CSRF validation error
 
-### TC-144: Rate Limiting
+### TC-154: Rate Limiting
 
 **Steps:**
 1. Make 150+ requests in quick succession
@@ -1251,7 +1452,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 
 ## Cross-Cutting Features Testing
 
-### TC-150: Comments on Any Entity
+### TC-160: Comments on Any Entity
 
 **Steps:**
 1. Open any detail page (Requisition, PO, Supplier, etc.)
@@ -1263,7 +1464,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - Comment saved with author/timestamp
 - Visible to all users with access
 
-### TC-151: Attachments on Any Entity
+### TC-161: Attachments on Any Entity
 
 **Steps:**
 1. Open any detail page
@@ -1276,7 +1477,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - Can be downloaded
 - File type/size restrictions enforced
 
-### TC-152: Export from Any List
+### TC-162: Export from Any List
 
 **Steps:**
 1. Navigate to any list page
@@ -1287,7 +1488,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - CSV contains filtered data
 - All visible columns included
 
-### TC-153: Search Functionality
+### TC-163: Search Functionality
 
 **Steps:**
 1. On any list page, use search bar
@@ -1297,7 +1498,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - Results filter in real-time
 - Matches on relevant fields
 
-### TC-154: Pagination
+### TC-164: Pagination
 
 **Steps:**
 1. On list with many items
@@ -1308,7 +1509,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 - Page navigation works
 - Page size changes item count
 
-### TC-155: Responsive Design
+### TC-165: Responsive Design
 
 **Steps:**
 1. Open application on mobile device or resize browser
@@ -1322,9 +1523,91 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 
 ---
 
+## Supplier Portal Testing
+
+### TC-170: Portal Login
+
+**Steps:**
+1. Navigate to http://localhost:3000/portal
+2. Login with supplier credentials
+
+**Expected Result:**
+- Supplier portal dashboard displays
+- Shows available RFPs/RFQs
+- Only sees own organization's data
+
+### TC-171: View RFP Invitation
+
+**Steps:**
+1. In portal, click on an RFP invitation
+2. Review RFP details, sections, requirements
+
+**Expected Result:**
+- All RFP details visible
+- Deadline prominently displayed
+- Q&A section accessible
+- Attachments downloadable
+
+### TC-172: Submit Proposal via Portal
+
+**Steps:**
+1. Open RFP invitation
+2. Click "Submit Proposal"
+3. Fill each section:
+   - Technical responses per requirement
+   - Team profiles (file uploads)
+   - Pricing per line item
+4. Click "Submit"
+
+**Expected Result:**
+- Proposal submitted successfully
+- Status changes to "Submitted"
+- Confirmation notification received
+- Cannot edit after submission deadline
+
+### TC-173: Ask Question via Portal
+
+**Steps:**
+1. In portal, open an RFP
+2. Go to Q&A section
+3. Click "Ask Question"
+4. Enter question and submit
+
+**Expected Result:**
+- Question submitted with "Pending" status
+- Visible in question list
+- Cannot see other vendors' questions until published
+
+### TC-174: Respond to BAFO Request
+
+**Steps:**
+1. View BAFO request in portal
+2. Review original proposal terms
+3. Enter revised pricing/terms
+4. Click "Submit BAFO"
+
+**Expected Result:**
+- BAFO response recorded
+- Both original and BAFO versions preserved
+- Confirmation notification sent
+
+### TC-175: View Award Notification
+
+**Steps:**
+1. Wait for RFP to be awarded
+2. Check notifications in portal
+3. Click on award notification
+
+**Expected Result:**
+- Winner sees "Congratulations" message with next steps
+- Non-winners see "Thank you for participating" message
+- All can view their scores (if configured)
+
+---
+
 ## Test Data Cleanup
 
-### TC-160: Delete Test Data
+### TC-180: Delete Test Data
 
 **Steps:**
 1. Login to Django admin
@@ -1339,7 +1622,7 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 
 **Note:** Be careful not to delete production data!
 
-### TC-161: Reset Database (Development Only)
+### TC-181: Reset Database (Development Only)
 
 **Steps:**
 1. Stop containers: `docker-compose down`
@@ -1362,16 +1645,22 @@ Use Swagger UI (http://localhost:8000/api/docs/) or curl for these tests.
 | Suppliers | TC-030 to TC-037 | | | |
 | Requisitions | TC-040 to TC-046 | | | |
 | RFQs | TC-050 to TC-056 | | | |
-| RFPs | TC-060 to TC-066 | | | |
-| Purchase Orders | TC-070 to TC-076 | | | |
-| Receiving | TC-080 to TC-084 | | | |
-| Invoices | TC-090 to TC-096 | | | |
-| Contracts | TC-100 to TC-105 | | | |
-| Notifications | TC-110 to TC-114 | | | |
-| Reports | TC-120 to TC-124 | | | |
-| Admin Panel | TC-130 to TC-134 | | | |
-| API | TC-140 to TC-144 | | | |
-| Cross-Cutting | TC-150 to TC-155 | | | |
+| RFPs (Basic) | TC-060 to TC-066 | | | |
+| RFPs (BAFO) | TC-067 to TC-069 | | | New: BAFO workflow |
+| RFPs (Q&A) | TC-070 to TC-071 | | | New: Q&A portal |
+| RFPs (Compliance) | TC-072 | | | New: Compliance matrix |
+| RFPs (Evaluation) | TC-073 to TC-074 | | | New: Multi-evaluator, comparison |
+| Purchase Orders | TC-080 to TC-087 | | | Includes PO from RFP (TC-081) |
+| Receiving | TC-090 to TC-094 | | | |
+| Invoices | TC-100 to TC-106 | | | |
+| Contracts | TC-110 to TC-116 | | | Includes Contract from RFP (TC-111) |
+| Notifications | TC-120 to TC-125 | | | Includes RFP notifications (TC-125) |
+| Reports & KPIs | TC-130 to TC-136 | | | Includes RFP KPIs (TC-135-136) |
+| Admin Panel | TC-140 to TC-144 | | | |
+| API | TC-150 to TC-154 | | | |
+| Cross-Cutting | TC-160 to TC-165 | | | |
+| Supplier Portal | TC-170 to TC-175 | | | New: Vendor-side testing |
+| Test Data Cleanup | TC-180 to TC-181 | | | |
 
 ---
 
@@ -1395,6 +1684,15 @@ Document any known issues discovered during testing:
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 2.0*
 *Last Updated: December 2024*
-*Platform Version: Dillanci 1.0*
+*Platform Version: Dillanci 1.1*
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | December 2024 | Initial release with core module testing |
+| 2.0 | December 2024 | Added RFP enhancements (BAFO, Q&A, Compliance, Multi-Evaluator), Supplier Portal testing, RFP KPIs, Contract/PO from RFP flows |

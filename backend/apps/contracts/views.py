@@ -164,6 +164,42 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract = self.get_object()
         return self._handle_workflow_action(contract, contract.cancel)
 
+    @action(detail=False, methods=['post'], url_path='from-rfp')
+    def create_from_rfp(self, request):
+        """
+        Create a contract from an awarded RFP.
+
+        Request body:
+        - rfp_id: UUID of the awarded RFP
+        - proposal_id: UUID of the awarded proposal
+        """
+        from django.shortcuts import get_object_or_404
+        from apps.rfps.models import RFP, Proposal
+
+        rfp_id = request.data.get('rfp_id')
+        proposal_id = request.data.get('proposal_id')
+
+        if not rfp_id or not proposal_id:
+            return Response(
+                {'error': 'Both rfp_id and proposal_id are required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rfp = get_object_or_404(RFP, id=rfp_id)
+        proposal = get_object_or_404(Proposal, id=proposal_id)
+
+        try:
+            contract = Contract.create_from_rfp(rfp, proposal, request.user)
+            return Response(
+                ContractSerializer(contract).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     # Nested resources
     @action(detail=True, methods=['get', 'post'])
     def lines(self, request, pk=None):

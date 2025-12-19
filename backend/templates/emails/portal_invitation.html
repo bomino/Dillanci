@@ -1,0 +1,67 @@
+{% extends "emails/base.html" %}
+
+{% block title %}You're Invited to Dillanci Supplier Portal{% endblock %}
+
+{% block content %}
+<h1 class="email-title">You're Invited to the Supplier Portal</h1>
+
+<div class="email-body">
+    <p>Hi,</p>
+    <p>
+        <strong>{{ organization_name }}</strong> has invited you to join the Dillanci Supplier Portal
+        as a representative of <strong>{{ supplier_name }}</strong>.
+    </p>
+</div>
+
+<div class="detail-box">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td class="detail-label" style="padding: 8px 0;">Organization</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right;">{{ organization_name }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Supplier</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ supplier_name }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Invited By</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ invited_by }}</td>
+        </tr>
+        <tr>
+            <td class="detail-label" style="padding: 8px 0; border-top: 1px solid #e5e5e5;">Invitation Expires</td>
+            <td class="detail-value" style="padding: 8px 0; text-align: right; border-top: 1px solid #e5e5e5;">{{ expires_at }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="email-body">
+    <p><strong>With the Supplier Portal, you can:</strong></p>
+    <ul style="color: #525252; padding-left: 20px; line-height: 1.8;">
+        <li>View and respond to Requests for Quotation (RFQs)</li>
+        <li>Submit proposals for Requests for Proposal (RFPs)</li>
+        <li>View and acknowledge Purchase Orders</li>
+        <li>Track your submission history</li>
+        <li>Manage your supplier profile</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ action_url }}" class="button">Accept Invitation &amp; Register</a>
+</div>
+
+<div class="email-body">
+    <p style="font-size: 13px; color: #737373;">
+        This invitation will expire in <strong>{{ expiry_days }} days</strong>.
+        If you didn't expect this invitation, you can safely ignore this email.
+    </p>
+</div>
+
+<div class="email-body" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+    <p style="font-size: 13px; color: #737373;">
+        Having trouble with the button above? Copy and paste this link into your browser:
+    </p>
+    <p style="font-size: 12px; color: #a3a3a3; word-break: break-all;">
+        {{ action_url }}
+    </p>
+</div>
+{% endblock %}

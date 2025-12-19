@@ -18,7 +18,7 @@ from apps.purchase_orders.models import PurchaseOrder
 from apps.receiving.models import GoodsReceipt, GoodsReceiptLine
 from apps.reports.models import DashboardKPI
 from apps.requisitions.models import Requisition
-from apps.rfps.models import RFP
+from apps.rfps.models import RFP, Proposal, EvaluationScore, BAFORound
 from apps.rfqs.models import RFQ
 from apps.suppliers.models import Supplier
 
@@ -291,6 +291,179 @@ class KPIService:
         return open_rfqs + open_rfps
 
     # =========================================================================
+    # RFP-SPECIFIC KPIs
+    # =========================================================================
+
+    def get_rfp_open_count(self) -> int:
+        """Count open RFPs (PUBLISHED or EVALUATION status)."""
+        return RFP.objects.filter(
+            organization=self.organization,
+            status__in=['PUBLISHED', 'EVALUATION', 'BAFO'],
+            is_deleted=False,
+        ).count()
+
+    def get_rfp_proposals_received(self) -> int:
+        """Count proposals received in current period."""
+        period_start, period_end = self._get_period_dates('MTD')
+
+        return Proposal.objects.filter(
+            rfp__organization=self.organization,
+            status__in=['SUBMITTED', 'SHORTLISTED', 'BAFO_REQUESTED', 'BAFO_SUBMITTED', 'AWARDED'],
+            submitted_at__date__gte=period_start,
+            submitted_at__date__lte=period_end,
+        ).count()
+
+    def get_rfp_avg_evaluation_score(self) -> Decimal:
+        """Calculate average evaluation score across all proposals."""
+        period_start, period_end = self._get_period_dates('MTD')
+
+        result = EvaluationScore.objects.filter(
+            proposal__rfp__organization=self.organization,
+            created_at__date__gte=period_start,
+            created_at__date__lte=period_end,
+        ).aggregate(avg_score=Avg('score'))
+
+        return Decimal(str(result['avg_score'] or 0)).quantize(Decimal('0.01'))
+
+    def get_rfp_bafo_rounds_active(self) -> int:
+        """Count active BAFO rounds."""
+        return BAFORound.objects.filter(
+            rfp__organization=self.organization,
+            status='OPEN',
+        ).count()
+
+    def get_rfp_time_to_award_avg(self) -> Decimal:
+        """
+        Calculate average time from RFP publish to award in days.
+        """
+        period_start, period_end = self._get_period_dates('YTD')
+
+        awarded_rfps = RFP.objects.filter(
+            organization=self.organization,
+            status='AWARDED',
+            awarded_date__date__gte=period_start,
+            awarded_date__date__lte=period_end,
+            publish_date__isnull=False,
+            is_deleted=False,
+        )
+
+        if not awarded_rfps.exists():
+            return Decimal('0.00')
+
+        total_days = Decimal('0.00')
+        count = 0
+
+        for rfp in awarded_rfps:
+            if rfp.publish_date and rfp.awarded_date:
+                cycle_time = (rfp.awarded_date - rfp.publish_date).total_seconds() / 86400
+                total_days += Decimal(str(cycle_time))
+                count += 1
+
+        if count == 0:
+            return Decimal('0.00')
+
+        return round(total_days / count, 2)
+
+    def get_rfp_supplier_response_rate(self) -> Decimal:
+        """
+        Calculate supplier response rate for RFP invitations.
+        (Proposals submitted / Invitations sent) * 100
+        """
+        period_start, period_end = self._get_period_dates('MTD')
+
+        from apps.rfps.models import RFPInvitation
+
+        invitations = RFPInvitation.objects.filter(
+            rfp__organization=self.organization,
+            created_at__date__gte=period_start,
+            created_at__date__lte=period_end,
+        )
+
+        total_invitations = invitations.count()
+        if total_invitations == 0:
+            return Decimal('100.00')
+
+        responded = invitations.filter(
+            status__in=['PROPOSAL_SUBMITTED', 'DECLINED']
+        ).count()
+
+        return round((Decimal(responded) / Decimal(total_invitations)) * 100, 2)
+
+    def get_rfp_evaluation_completion_rate(self) -> Decimal:
+        """
+        Calculate evaluation completion rate.
+        (Completed evaluations / Total required evaluations) * 100
+        """
+        from apps.rfps.models import EvaluationTeam
+
+        # Get RFPs in evaluation status
+        evaluation_rfps = RFP.objects.filter(
+            organization=self.organization,
+            status__in=['EVALUATION', 'BAFO', 'CLOSED'],
+            is_deleted=False,
+        )
+
+        if not evaluation_rfps.exists():
+            return Decimal('100.00')
+
+        total_required = 0
+        total_completed = 0
+
+        for rfp in evaluation_rfps:
+            # Count evaluation team members
+            evaluators = EvaluationTeam.objects.filter(rfp=rfp).count()
+            proposals = Proposal.objects.filter(
+                rfp=rfp,
+                status__in=['SUBMITTED', 'SHORTLISTED', 'BAFO_SUBMITTED', 'AWARDED']
+            ).count()
+
+            # Total evaluations required = evaluators * proposals
+            required = evaluators * proposals
+            total_required += required
+
+            # Count completed evaluations (scores submitted)
+            completed = EvaluationScore.objects.filter(
+                proposal__rfp=rfp,
+                score__isnull=False,
+            ).count()
+            total_completed += completed
+
+        if total_required == 0:
+            return Decimal('100.00')
+
+        return round((Decimal(total_completed) / Decimal(total_required)) * 100, 2)
+
+    def get_rfp_awarded_value_mtd(self) -> Decimal:
+        """Calculate total value of awarded RFPs month-to-date."""
+        period_start, period_end = self._get_period_dates('MTD')
+
+        awarded_proposals = Proposal.objects.filter(
+            rfp__organization=self.organization,
+            status='AWARDED',
+            rfp__awarded_date__date__gte=period_start,
+            rfp__awarded_date__date__lte=period_end,
+        )
+
+        # total_amount is a property, so we aggregate line_items instead
+        result = awarded_proposals.aggregate(total=Sum('line_items__extended_price'))
+        return result['total'] or Decimal('0.00')
+
+    def get_rfp_awarded_value_ytd(self) -> Decimal:
+        """Calculate total value of awarded RFPs year-to-date."""
+        period_start, period_end = self._get_period_dates('YTD')
+
+        awarded_proposals = Proposal.objects.filter(
+            rfp__organization=self.organization,
+            status='AWARDED',
+            rfp__awarded_date__date__gte=period_start,
+            rfp__awarded_date__date__lte=period_end,
+        )
+
+        # total_amount is a property, so we aggregate line_items instead
+        result = awarded_proposals.aggregate(total=Sum('line_items__extended_price'))
+        return result['total'] or Decimal('0.00')
+
+    # =========================================================================
     # APPROVAL KPIs
     # =========================================================================
 
@@ -452,12 +625,13 @@ class KPIService:
 
     def calculate_all_kpis(self) -> dict:
         """
-        Calculate all 12 KPIs and return as dict.
+        Calculate all KPIs and return as dict.
 
         Returns:
             Dict with KPI type as key and calculated value.
         """
         return {
+            # Core KPIs
             'TOTAL_SPEND_MTD': self.get_total_spend_mtd(),
             'TOTAL_SPEND_YTD': self.get_total_spend_ytd(),
             'BUDGET_UTILIZATION': self.get_budget_utilization(),
@@ -470,6 +644,16 @@ class KPIService:
             'EXPIRING_CONTRACTS_90D': self.get_expiring_contracts_90d(),
             'INVOICE_MATCH_RATE': self.get_invoice_match_rate(),
             'ON_TIME_DELIVERY_RATE': self.get_on_time_delivery_rate(),
+            # RFP-specific KPIs
+            'RFP_OPEN_COUNT': self.get_rfp_open_count(),
+            'RFP_PROPOSALS_RECEIVED': self.get_rfp_proposals_received(),
+            'RFP_AVG_EVALUATION_SCORE': self.get_rfp_avg_evaluation_score(),
+            'RFP_BAFO_ROUNDS_ACTIVE': self.get_rfp_bafo_rounds_active(),
+            'RFP_TIME_TO_AWARD_AVG': self.get_rfp_time_to_award_avg(),
+            'RFP_SUPPLIER_RESPONSE_RATE': self.get_rfp_supplier_response_rate(),
+            'RFP_EVALUATION_COMPLETION_RATE': self.get_rfp_evaluation_completion_rate(),
+            'RFP_AWARDED_VALUE_MTD': self.get_rfp_awarded_value_mtd(),
+            'RFP_AWARDED_VALUE_YTD': self.get_rfp_awarded_value_ytd(),
         }
 
     def save_kpi_snapshot(self, kpi_type: str, value, period_type: str = 'MTD') -> DashboardKPI:
@@ -487,10 +671,20 @@ class KPIService:
         period_start, period_end = self._get_period_dates(period_type)
 
         # Determine value field based on KPI type
-        numeric_kpis = ['TOTAL_SPEND_MTD', 'TOTAL_SPEND_YTD', 'AVG_PO_CYCLE_TIME', 'SUPPLIER_PERFORMANCE_AVG']
-        percentage_kpis = ['BUDGET_UTILIZATION', 'CONTRACT_COMPLIANCE', 'MAVERICK_SPEND',
-                          'INVOICE_MATCH_RATE', 'ON_TIME_DELIVERY_RATE']
-        count_kpis = ['OPEN_RFX_COUNT', 'PENDING_APPROVALS', 'EXPIRING_CONTRACTS_90D']
+        numeric_kpis = [
+            'TOTAL_SPEND_MTD', 'TOTAL_SPEND_YTD', 'AVG_PO_CYCLE_TIME', 'SUPPLIER_PERFORMANCE_AVG',
+            'RFP_AVG_EVALUATION_SCORE', 'RFP_TIME_TO_AWARD_AVG',
+            'RFP_AWARDED_VALUE_MTD', 'RFP_AWARDED_VALUE_YTD',
+        ]
+        percentage_kpis = [
+            'BUDGET_UTILIZATION', 'CONTRACT_COMPLIANCE', 'MAVERICK_SPEND',
+            'INVOICE_MATCH_RATE', 'ON_TIME_DELIVERY_RATE',
+            'RFP_SUPPLIER_RESPONSE_RATE', 'RFP_EVALUATION_COMPLETION_RATE',
+        ]
+        count_kpis = [
+            'OPEN_RFX_COUNT', 'PENDING_APPROVALS', 'EXPIRING_CONTRACTS_90D',
+            'RFP_OPEN_COUNT', 'RFP_PROPOSALS_RECEIVED', 'RFP_BAFO_ROUNDS_ACTIVE',
+        ]
 
         # Get or create the KPI record
         kpi, created = DashboardKPI.objects.update_or_create(
@@ -534,12 +728,18 @@ class KPIService:
         mtd_kpis = [
             'TOTAL_SPEND_MTD', 'AVG_PO_CYCLE_TIME', 'INVOICE_MATCH_RATE',
             'ON_TIME_DELIVERY_RATE', 'OPEN_RFX_COUNT', 'PENDING_APPROVALS',
+            # RFP MTD KPIs
+            'RFP_OPEN_COUNT', 'RFP_PROPOSALS_RECEIVED', 'RFP_AVG_EVALUATION_SCORE',
+            'RFP_BAFO_ROUNDS_ACTIVE', 'RFP_SUPPLIER_RESPONSE_RATE',
+            'RFP_EVALUATION_COMPLETION_RATE', 'RFP_AWARDED_VALUE_MTD',
         ]
 
         # YTD KPIs
         ytd_kpis = [
             'TOTAL_SPEND_YTD', 'BUDGET_UTILIZATION', 'CONTRACT_COMPLIANCE',
             'MAVERICK_SPEND', 'SUPPLIER_PERFORMANCE_AVG', 'EXPIRING_CONTRACTS_90D',
+            # RFP YTD KPIs
+            'RFP_TIME_TO_AWARD_AVG', 'RFP_AWARDED_VALUE_YTD',
         ]
 
         for kpi_type, value in kpis.items():
