@@ -58,6 +58,7 @@
 - **Admin Panel** - User management, roles & permissions, workflow configuration
 
 ### Documentation
+- **[User Guide](docs/USER_GUIDE.md)** - Comprehensive user documentation for all platform modules
 - **[Workflow Guide](docs/WORKFLOW_DOCUMENTATION.md)** - Detailed procurement workflows including REQ→PO conversion
 
 ## Tech Stack
