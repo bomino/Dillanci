@@ -4,6 +4,7 @@ Requisition serializers for API endpoints.
 
 from rest_framework import serializers
 
+from apps.core.utils.sanitization import sanitize_html
 from apps.requisitions.models import (
     Requisition,
     RequisitionLine,
@@ -195,6 +196,10 @@ class RequisitionCreateSerializer(serializers.ModelSerializer):
             'budget_line',
             'lines',
         ]
+
+    def validate_description(self, value):
+        """Sanitize description to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
 
     def create(self, validated_data):
         lines_data = validated_data.pop('lines', [])

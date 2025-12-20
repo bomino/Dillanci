@@ -4,6 +4,7 @@ RFQ serializers for API endpoints.
 
 from rest_framework import serializers
 
+from apps.core.utils.sanitization import sanitize_html
 from apps.rfqs.models import RFQ, RFQLine, SupplierInvitation, Bid, BidLine
 
 
@@ -432,6 +433,18 @@ class RFQCreateSerializer(serializers.ModelSerializer):
             'lines',
             'invited_suppliers',
         ]
+
+    def validate_description(self, value):
+        """Sanitize description to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
+    def validate_project_background(self, value):
+        """Sanitize project_background to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
+    def validate_terms_and_conditions(self, value):
+        """Sanitize terms_and_conditions to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
 
     def create(self, validated_data):
         from apps.suppliers.models import Supplier

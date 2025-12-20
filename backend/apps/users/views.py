@@ -7,6 +7,8 @@ import secrets
 from django.contrib.auth import login, logout
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
@@ -37,6 +39,8 @@ class LoginView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True))
+    @method_decorator(ratelimit(key='post:email', rate='10/h', method='POST', block=True))
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -86,6 +90,7 @@ class PasswordChangeView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(ratelimit(key='user', rate='5/h', method='POST', block=True))
     def post(self, request):
         serializer = PasswordChangeSerializer(
             data=request.data,

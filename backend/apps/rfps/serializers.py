@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from apps.core.utils.sanitization import sanitize_html
 from apps.users.models import User
 from .models import (
     BAFORound,
@@ -255,6 +256,18 @@ class RFPCreateSerializer(serializers.ModelSerializer):
             'nda_required', 'payment_terms', 'ip_ownership',
             'insurance_requirements', 'confidentiality_terms',
         ]
+
+    def validate_description(self, value):
+        """Sanitize description to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
+    def validate_executive_summary(self, value):
+        """Sanitize executive_summary to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
+    def validate_notes(self, value):
+        """Sanitize notes to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
 
     def create(self, validated_data):
         sections_data = validated_data.pop('sections', [])
@@ -574,6 +587,10 @@ class EvaluationScoreCreateSerializer(serializers.ModelSerializer):
             'score', 'max_score', 'comments', 'is_final',
         ]
 
+    def validate_comments(self, value):
+        """Sanitize comments to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
     def validate(self, data):
         # Ensure at least one of criteria, section, or question is provided
         if not any([data.get('criteria'), data.get('section'), data.get('question')]):
@@ -697,6 +714,10 @@ class RFPQACreateSerializer(serializers.ModelSerializer):
         model = RFPQA
         fields = ['supplier', 'asked_by', 'question', 'visibility']
 
+    def validate_question(self, value):
+        """Sanitize question to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
+
 
 class RFPQAAnswerSerializer(serializers.Serializer):
     """Serializer for answering Q&A questions."""
@@ -706,6 +727,10 @@ class RFPQAAnswerSerializer(serializers.Serializer):
         choices=RFPQA.VISIBILITY_CHOICES,
         default='ALL_BIDDERS',
     )
+
+    def validate_answer(self, value):
+        """Sanitize answer to prevent XSS attacks."""
+        return sanitize_html(value) if value else value
 
 
 # ============ Action Serializers ============

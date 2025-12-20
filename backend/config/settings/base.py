@@ -108,13 +108,29 @@ AUTH_USER_MODEL = 'users.User'
 # Redirect to admin login after logout
 LOGOUT_REDIRECT_URL = '/admin/login/'
 
-# Password validation
+# Password validation - enforcing strong passwords
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
+
+# Session Security
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection for session cookie
+SESSION_COOKIE_AGE = 86400  # 24 hours (in seconds)
+SESSION_SAVE_EVERY_REQUEST = True  # Extend session on each request
+CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read CSRF token
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'

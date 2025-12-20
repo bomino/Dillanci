@@ -11,6 +11,8 @@ Provides endpoints for supplier portal users to:
 from django.contrib.auth import login, logout
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status, generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -75,6 +77,8 @@ class PortalLoginView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True))
+    @method_decorator(ratelimit(key='post:email', rate='10/h', method='POST', block=True))
     def post(self, request):
         serializer = PortalLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -118,6 +122,7 @@ class PortalRegisterView(APIView):
 
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='3/m', method='POST', block=True))
     def post(self, request):
         serializer = PortalRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

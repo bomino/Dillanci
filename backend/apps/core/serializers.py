@@ -5,6 +5,7 @@ Core serializers for admin configuration models.
 from rest_framework import serializers
 
 from apps.core.models import APIKey, ApprovalThreshold, Attachment, Comment, Notification, SystemPreference
+from apps.core.utils.sanitization import sanitize_html
 
 
 class ApprovalThresholdSerializer(serializers.ModelSerializer):
@@ -254,6 +255,10 @@ class CommentCreateSerializer(serializers.ModelSerializer):
             'parent_id',
         ]
 
+    def validate_content(self, value):
+        """Sanitize comment content to prevent XSS attacks."""
+        return sanitize_html(value)
+
     def validate_parent_id(self, value):
         if value:
             try:
@@ -269,6 +274,10 @@ class CommentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['content']
+
+    def validate_content(self, value):
+        """Sanitize comment content to prevent XSS attacks."""
+        return sanitize_html(value)
 
 
 # =============================================================================
