@@ -1,6 +1,39 @@
-# Dillanci - Enterprise Procurement Platform
+<div align="center">
 
-Dillanci is a comprehensive enterprise procurement platform designed to streamline the entire procure-to-pay lifecycle. Built with Django REST Framework backend and React TypeScript frontend.
+<img src="frontend/public/images/logo-full.svg" alt="Dillanci Logo" width="400"/>
+
+# Dillanci
+
+### Enterprise Procurement Platform
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-5.x-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+
+[![Tests](https://img.shields.io/badge/Tests-841%20Passing-success?style=flat-square)](https://github.com/bomino/Dillanci)
+[![Coverage](https://img.shields.io/badge/Coverage-82%25-brightgreen?style=flat-square)](https://github.com/bomino/Dillanci)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](LICENSE)
+
+<br/>
+
+[![Deploy with Docker](https://img.shields.io/badge/Deploy%20with-Docker%20Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](#quick-start-with-docker)
+
+---
+
+**A comprehensive enterprise procurement platform designed to streamline the entire procure-to-pay lifecycle.**
+
+[Getting Started](#getting-started) •
+[Features](#features) •
+[Documentation](#documentation) •
+[API Reference](#api-documentation) •
+[Contributing](#contributing)
+
+</div>
+
+---
 
 ## Features
 
@@ -438,4 +471,13 @@ For support, please contact the development team or open an issue on GitHub.
 
 ---
 
-Built with care by the Dillanci Team
+<div align="center">
+
+**Built with care by the Dillanci Team**
+
+<img src="frontend/public/images/icon.svg" alt="Dillanci Icon" width="60"/>
+
+[![Made with Django](https://img.shields.io/badge/Made%20with-Django-092E20?style=flat-square&logo=django)](https://djangoproject.com)
+[![Made with React](https://img.shields.io/badge/Made%20with-React-61DAFB?style=flat-square&logo=react)](https://reactjs.org)
+
+</div>
