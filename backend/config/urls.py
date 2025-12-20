@@ -4,7 +4,6 @@ URL configuration for Procurement Platform.
 
 from django.conf import settings
 from django.contrib import admin
-from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -13,6 +12,12 @@ from drf_spectacular.views import (
 )
 from rest_framework.routers import DefaultRouter
 
+from apps.core.health import (
+    HealthCheckView,
+    LivenessCheckView,
+    ReadinessCheckView,
+    health_check_simple,
+)
 from apps.core.views import AttachmentViewSet, CommentViewSet, NotificationViewSet
 from apps.requisitions.views import RequisitionTemplateViewSet
 
@@ -35,14 +40,12 @@ admin.site.site_title = 'Dillanci Admin'
 admin.site.index_title = 'Enterprise Procurement Platform'
 
 
-def health_check(request):
-    """Simple health check endpoint for Docker."""
-    return JsonResponse({'status': 'healthy'})
-
-
 urlpatterns = [
-    # Health Check
-    path('api/v1/health/', health_check, name='health-check'),
+    # Health Check Endpoints
+    path('api/v1/health/', health_check_simple, name='health-check'),
+    path('api/v1/health/detailed/', HealthCheckView.as_view(), name='health-check-detailed'),
+    path('api/v1/health/ready/', ReadinessCheckView.as_view(), name='health-check-ready'),
+    path('api/v1/health/live/', LivenessCheckView.as_view(), name='health-check-live'),
 
     # Admin
     path('admin/', admin.site.urls),

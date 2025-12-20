@@ -29,3 +29,11 @@ python-dateutil>=2.8
 django-ratelimit>=4.1.0
 django-csp>=3.8
 bleach>=6.1.0
+
+# Monitoring & Observability
+sentry-sdk>=2.0
+structlog>=24.0
+
+# Cloud Storage
+django-storages>=1.14
+boto3>=1.34
