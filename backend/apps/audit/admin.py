@@ -5,6 +5,7 @@ Admin configuration for Audit models.
 from django.contrib import admin
 
 from apps.audit.models import AuditConfiguration, AuditLog
+from apps.audit.security_models import SecurityEvent
 
 
 @admin.register(AuditLog)
@@ -137,3 +138,105 @@ class AuditConfigurationAdmin(admin.ModelAdmin):
             )
         }),
     )
+
+
+@admin.register(SecurityEvent)
+class SecurityEventAdmin(admin.ModelAdmin):
+    """Admin configuration for SecurityEvent."""
+
+    list_display = [
+        'timestamp',
+        'event_type',
+        'severity',
+        'user_email',
+        'ip_address',
+        'success',
+        'organization',
+    ]
+    list_filter = [
+        'event_type',
+        'severity',
+        'success',
+        'organization',
+        'timestamp',
+    ]
+    search_fields = [
+        'user_email',
+        'target_email',
+        'ip_address',
+        'description',
+        'correlation_id',
+    ]
+    readonly_fields = [
+        'id',
+        'timestamp',
+        'event_type',
+        'severity',
+        'user',
+        'user_email',
+        'organization',
+        'ip_address',
+        'user_agent',
+        'description',
+        'details',
+        'target_user',
+        'target_email',
+        'correlation_id',
+        'success',
+        'failure_reason',
+    ]
+    date_hierarchy = 'timestamp'
+    ordering = ['-timestamp']
+
+    fieldsets = (
+        (None, {
+            'fields': (
+                'id',
+                'timestamp',
+                'event_type',
+                'severity',
+                'success',
+                'failure_reason',
+            )
+        }),
+        ('User Info', {
+            'fields': (
+                'user',
+                'user_email',
+                'organization',
+            )
+        }),
+        ('Target', {
+            'fields': (
+                'target_user',
+                'target_email',
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Request Info', {
+            'fields': (
+                'ip_address',
+                'user_agent',
+                'correlation_id',
+            )
+        }),
+        ('Details', {
+            'fields': (
+                'description',
+                'details',
+            ),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        """Security events should only be created programmatically."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Security events are immutable."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Only superusers can delete security events."""
+        return request.user.is_superuser

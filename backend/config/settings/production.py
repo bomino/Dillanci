@@ -62,6 +62,61 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
+# =============================================================================
+# CORS Configuration for Production
+# =============================================================================
+# IMPORTANT: CORS_ALLOWED_ORIGINS must be set in environment for production
+# Example: CORS_ALLOWED_ORIGINS=https://app.dillanci.com,https://dillanci.com
+#
+# The base.py defaults to localhost which is NOT suitable for production.
+# This override ensures production CORS is explicitly configured.
+
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS if origin.strip()]
+
+if not CORS_ALLOWED_ORIGINS:
+    raise ValueError(
+        "CORS_ALLOWED_ORIGINS environment variable must be set in production. "
+        "Example: CORS_ALLOWED_ORIGINS=https://app.dillanci.com"
+    )
+
+# Only allow credentials from explicitly allowed origins
+CORS_ALLOW_CREDENTIALS = True
+
+# Restrict allowed headers and methods
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-correlation-id',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Cache preflight requests for 1 hour
+CORS_PREFLIGHT_MAX_AGE = 3600
+
+# Also update CSRF trusted origins for production
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS if origin.strip()]
+
+if not CSRF_TRUSTED_ORIGINS:
+    # Use CORS origins if CSRF origins not explicitly set
+    CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
+
 # Content Security Policy (django-csp)
 # Protects against XSS by controlling which resources can be loaded
 CSP_DEFAULT_SRC = ("'self'",)

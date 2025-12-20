@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.security_service import SecurityAuditService
 from apps.users.models import Permissions, Role, RoleChangeLog, RolePresets, User, UserRole
 from apps.users.serializers import (
     AssignRoleSerializer,
@@ -43,9 +44,19 @@ class LoginView(APIView):
     @method_decorator(ratelimit(key='post:email', rate='10/h', method='POST', block=True))
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            # Log failed login attempt
+            email = request.data.get('email', 'unknown')
+            SecurityAuditService.log_login_failed(
+                request=request,
+                email=email,
+                reason='Invalid credentials',
+            )
+            serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         login(request, user)
+        # Log successful login
+        SecurityAuditService.log_login_success(request=request, user=user)
         # Return user with roles and permissions for frontend RBAC
         return Response({
             'message': 'Login successful',
@@ -59,7 +70,10 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        user = request.user
         logout(request)
+        # Log logout event
+        SecurityAuditService.log_logout(request=request, user=user)
         return Response({'message': 'Logout successful'})
 
 
@@ -98,6 +112,8 @@ class PasswordChangeView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # Log password change
+        SecurityAuditService.log_password_change(request=request, user=request.user)
         return Response({'message': 'Password changed successfully'})
 
 
@@ -135,6 +151,12 @@ class UserViewSet(viewsets.ModelViewSet):
         user.status = 'ACTIVE'
         user.is_active = True
         user.save()
+        # Log account activation
+        SecurityAuditService.log_account_activated(
+            request=request,
+            user=request.user,
+            target_user=user,
+        )
         return Response(UserSerializer(user).data)
 
     @action(detail=True, methods=['post'])
@@ -144,6 +166,12 @@ class UserViewSet(viewsets.ModelViewSet):
         user.status = 'INACTIVE'
         user.is_active = False
         user.save()
+        # Log account deactivation
+        SecurityAuditService.log_account_deactivated(
+            request=request,
+            user=request.user,
+            target_user=user,
+        )
         return Response(UserSerializer(user).data)
 
     @action(detail=True, methods=['post'])
@@ -152,6 +180,12 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.status = 'SUSPENDED'
         user.save()
+        # Log account suspension
+        SecurityAuditService.log_account_suspended(
+            request=request,
+            user=request.user,
+            target_user=user,
+        )
         return Response(UserSerializer(user).data)
 
     @action(detail=True, methods=['get'])
@@ -223,6 +257,18 @@ class UserViewSet(viewsets.ModelViewSet):
             ip_address=request.META.get('REMOTE_ADDR'),
         )
 
+        # Log to security audit
+        SecurityAuditService.log_role_assigned(
+            request=request,
+            user=request.user,
+            target_user=user,
+            role_name=role.name,
+            details={
+                'valid_from': str(user_role.valid_from),
+                'valid_to': str(user_role.valid_to) if user_role.valid_to else None,
+            },
+        )
+
         return Response(UserRoleSerializer(user_role).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='remove-role')
@@ -247,6 +293,8 @@ class UserViewSet(viewsets.ModelViewSet):
         user_role.is_active = False
         user_role.save()
 
+        reason = serializer.validated_data.get('reason', '')
+
         # Log the change
         RoleChangeLog.objects.create(
             user=user,
@@ -254,8 +302,17 @@ class UserViewSet(viewsets.ModelViewSet):
             role_name=user_role.role.name,
             action='REMOVED',
             performed_by=request.user,
-            reason=serializer.validated_data.get('reason', ''),
+            reason=reason,
             ip_address=request.META.get('REMOTE_ADDR'),
+        )
+
+        # Log to security audit
+        SecurityAuditService.log_role_removed(
+            request=request,
+            user=request.user,
+            target_user=user,
+            role_name=user_role.role.name,
+            reason=reason,
         )
 
         return Response({'message': 'Role removed successfully.'})
@@ -279,6 +336,13 @@ class UserViewSet(viewsets.ModelViewSet):
             status='ACTIVE',
         )
 
+        # Log account creation
+        SecurityAuditService.log_account_created(
+            request=request,
+            user=request.user,
+            target_user=user,
+        )
+
         # Assign roles if specified
         for role_id in serializer.validated_data.get('role_ids', []):
             role = Role.objects.get(id=role_id)
@@ -294,6 +358,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 action='ASSIGNED',
                 performed_by=request.user,
                 ip_address=request.META.get('REMOTE_ADDR'),
+            )
+            # Log role assignment to security audit
+            SecurityAuditService.log_role_assigned(
+                request=request,
+                user=request.user,
+                target_user=user,
+                role_name=role.name,
             )
 
         # In production, send invitation email with temp_password
