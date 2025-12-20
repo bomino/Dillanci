@@ -1,0 +1,218 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # Label PR based on files changed
+  labeler:
+    name: Label PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Check PR title follows conventional commits
+  conventional-commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter.
+
+  # Check for breaking changes
+  breaking-changes:
+    name: Check Breaking Changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for migration files
+        id: migrations
+        run: |
+          MIGRATION_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E 'migrations/[0-9]+.*\.py$' || true)
+          if [ -n "$MIGRATION_FILES" ]; then
+            echo "has_migrations=true" >> $GITHUB_OUTPUT
+            echo "Migration files found:"
+            echo "$MIGRATION_FILES"
+          else
+            echo "has_migrations=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR about migrations
+        if: steps.migrations.outputs.has_migrations == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## Database Migrations Detected
+
+            This PR contains database migrations. Please ensure:
+            - [ ] Migrations are backward compatible
+            - [ ] Migrations have been tested locally
+            - [ ] Data migrations (if any) have been reviewed
+            - [ ] Rollback procedure is documented (if needed)
+
+            _This is an automated comment._`;
+
+            // Check if comment already exists
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(c =>
+              c.body.includes('Database Migrations Detected')
+            );
+
+            if (!existingComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+  # Check for large files
+  large-files:
+    name: Check Large Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for large files
+        run: |
+          # Find files larger than 1MB
+          LARGE_FILES=$(find . -type f -size +1M -not -path "./.git/*" -not -path "./node_modules/*" -not -path "./.venv/*" 2>/dev/null || true)
+          if [ -n "$LARGE_FILES" ]; then
+            echo "Warning: Large files detected:"
+            echo "$LARGE_FILES"
+            echo ""
+            echo "Consider using Git LFS for large files."
+          fi
+
+  # Check for secrets
+  secrets-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
+
+  # Dependency review
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  # PR size check
+  pr-size:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const totalChanges = files.reduce((sum, f) => sum + f.changes, 0);
+            const totalFiles = files.length;
+
+            let label = '';
+            let comment = '';
+
+            if (totalChanges > 1000) {
+              label = 'size/XL';
+              comment = 'This PR is very large. Consider breaking it into smaller PRs for easier review.';
+            } else if (totalChanges > 500) {
+              label = 'size/L';
+            } else if (totalChanges > 100) {
+              label = 'size/M';
+            } else {
+              label = 'size/S';
+            }
+
+            // Add size label
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [label]
+              });
+            } catch (e) {
+              console.log('Could not add label:', e.message);
+            }
+
+            // Add comment for large PRs
+            if (comment) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+
+              if (!comments.find(c => c.body.includes('very large'))) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `**PR Size Warning**\n\n${comment}\n\n_${totalFiles} files changed, ${totalChanges} lines affected_`
+                });
+              }
+            }
+
+            console.log(`PR Size: ${totalFiles} files, ${totalChanges} changes - ${label}`);
