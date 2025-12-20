@@ -2,8 +2,6 @@
 
 <img src="frontend/public/images/logo-256h.png" alt="Dillanci Logo" height="80"/>
 
-# Dillanci
-
 ### Enterprise Procurement Platform
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
