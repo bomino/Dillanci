@@ -118,7 +118,7 @@ def send_notification_email(self, notification_id: str):
 def _build_email_context(notification) -> dict:
     """Build the context dictionary for email template rendering."""
     context = {
-        'recipient_name': notification.user.get_full_name() or notification.user.email,
+        'recipient_name': notification.user.full_name or notification.user.email,
         'notification_type': notification.type,
         'title': notification.title,
         'message': notification.message,
@@ -172,7 +172,7 @@ def send_portal_invitation_email(invitation_id: str):
     context = {
         'supplier_name': invitation.supplier.name,
         'organization_name': invitation.supplier.organization.name,
-        'invited_by': invitation.created_by.get_full_name() if invitation.created_by else 'Dillanci',
+        'invited_by': invitation.created_by.full_name if invitation.created_by else 'Dillanci',
         'expires_at': invitation.expires_at.strftime('%B %d, %Y'),
         'expiry_days': settings.PORTAL_INVITATION_EXPIRY_DAYS,
         'action_url': f"{settings.PORTAL_BASE_URL}/register?token={invitation.token}",

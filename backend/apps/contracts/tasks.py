@@ -34,7 +34,7 @@ def check_expiring_contracts():
     contracts_checked = 0
 
     # Get all active organizations
-    for org in Organization.objects.filter(is_active=True):
+    for org in Organization.objects.filter(status='ACTIVE'):
         # Get active contracts for this organization that might need alerts
         contracts = Contract.objects.filter(
             organization=org,

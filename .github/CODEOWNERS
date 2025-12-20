@@ -1,0 +1,28 @@
+# CODEOWNERS file
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @dillanci/core-team
+
+# Backend code
+/backend/ @dillanci/backend-team
+
+# Frontend code
+/frontend/ @dillanci/frontend-team
+
+# Infrastructure and CI/CD
+/.github/ @dillanci/devops-team
+/docker-compose*.yml @dillanci/devops-team
+/**/Dockerfile @dillanci/devops-team
+
+# Security-sensitive files
+**/auth* @dillanci/security-team
+**/permission* @dillanci/security-team
+**/settings/ @dillanci/security-team @dillanci/devops-team
+
+# Documentation
+/docs/ @dillanci/core-team
+*.md @dillanci/core-team
+
+# Database migrations require extra review
+**/migrations/ @dillanci/backend-team @dillanci/core-team

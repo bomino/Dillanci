@@ -1,0 +1,120 @@
+# Pre-commit hooks for Dillanci
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+# Update hooks: pre-commit autoupdate
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(frontend/dist/|backend/staticfiles/)
+      - id: end-of-file-fixer
+        exclude: ^(frontend/dist/|backend/staticfiles/)
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+        exclude: ^frontend/node_modules/
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # Python - Ruff (fast linter and formatter)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.3
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # Python - Black (code formatter) - as backup
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^backend/
+        exclude: migrations/
+
+  # Python - isort (import sorter)
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^backend/
+        exclude: migrations/
+
+  # Python - Flake8 (linter)
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        files: ^backend/
+        exclude: migrations/
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+
+  # Python - MyPy (type checker)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^backend/apps/
+        exclude: (migrations/|tests/)
+        additional_dependencies:
+          - django-stubs>=4.2
+          - djangorestframework-stubs>=3.14
+          - types-python-dateutil
+
+  # Django migrations check
+  - repo: local
+    hooks:
+      - id: django-check
+        name: Django System Check
+        entry: bash -c 'cd backend && python manage.py check --fail-level WARNING'
+        language: system
+        pass_filenames: false
+        files: ^backend/
+
+  # Frontend - ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # Frontend - TypeScript
+  - repo: local
+    hooks:
+      - id: typescript
+        name: TypeScript Check
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # Security checks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: (\.lock|package-lock\.json)$
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autoupdate_commit_msg: |
+    [pre-commit.ci] pre-commit autoupdate
+  skip: [django-check, eslint, typescript]  # These require project setup

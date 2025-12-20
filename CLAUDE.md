@@ -55,7 +55,7 @@ npm run preview      # Preview production build
 ### Backend Structure (`backend/`)
 - **config/settings/** - Django settings split by environment (base.py, development.py, production.py, test.py)
 - **apps/** - 16 Django apps organized by domain:
-  - `core/` - Base models (BaseModel, SoftDeleteModel), exceptions, Notification model, ApprovalThreshold
+  - `core/` - Base models (BaseModel, SoftDeleteModel), exceptions, Notification, Comment, Attachment models, ApprovalThreshold
   - `users/`, `organizations/` - Auth and multi-tenancy with RBAC (9 roles, 60+ permissions)
   - `suppliers/`, `catalog/`, `budget/` - Master data
   - `requisitions/`, `rfqs/`, `rfps/` - Sourcing workflow
@@ -118,6 +118,25 @@ if (hasPermission(Permissions.REQUISITION_CREATE)) { /* ... */ }
 - Django REST Framework with drf-spectacular for OpenAPI docs
 - API docs at `/api/docs/` (Swagger) and `/api/redoc/`
 - Health check at `/api/v1/health/`
+
+### Generic APIs (Comments & Attachments)
+Comments and attachments use a generic pattern with `object_type` and `object_id`:
+```
+GET /api/v1/comments/?object_type=requisition&object_id=<uuid>
+POST /api/v1/comments/  { content, object_type, object_id, parent_id? }
+PATCH /api/v1/comments/<id>/  { content }  # Author only
+DELETE /api/v1/comments/<id>/  # Author only
+
+GET /api/v1/attachments/?object_type=requisition&object_id=<uuid>
+POST /api/v1/attachments/  (multipart: file, object_type, object_id)
+DELETE /api/v1/attachments/<id>/  # Uploader only
+```
+
+### Supplier Portal API
+Separate portal for suppliers at `/api/v1/portal/`:
+- Portal users authenticate separately from internal users
+- Suppliers can view/respond to RFQs and RFPs
+- Submit invoices and view PO status
 
 ## Testing
 
@@ -227,3 +246,8 @@ Permissions follow the pattern `module.action` (e.g., `requisition.create`, `pur
 - `frontend/src/hooks/usePermissions.ts` - Permission checking hook
 - `frontend/src/components/auth/ProtectedRoute.tsx` - Route guards
 - `frontend/src/components/layout/Sidebar.tsx` - Permission-filtered navigation
+
+## Documentation
+
+- **[User Guide](docs/USER_GUIDE.md)** - Comprehensive user documentation (2000+ lines)
+- **[Workflow Guide](docs/WORKFLOW_DOCUMENTATION.md)** - Detailed procurement workflows

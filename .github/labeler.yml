@@ -1,0 +1,75 @@
+# PR Labeler configuration
+# https://github.com/actions/labeler
+
+# Backend changes
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**/*'
+
+# Frontend changes
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**/*'
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
+
+# Tests
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*test*'
+          - '**/*spec*'
+          - '**/tests/**'
+          - '**/test/**'
+
+# CI/CD
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**/*'
+          - 'docker-compose*.yml'
+          - 'Dockerfile*'
+
+# Dependencies
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/package*.json'
+          - '**/requirements*.txt'
+          - '**/pyproject.toml'
+
+# Database
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/migrations/**'
+          - '**/models.py'
+
+# API
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/views.py'
+          - '**/serializers.py'
+          - '**/urls.py'
+
+# Security
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/auth*'
+          - '**/permission*'
+          - '**/security*'
+
+# Configuration
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/.env*'
+          - '**/settings/**'
+          - '**/config/**'
