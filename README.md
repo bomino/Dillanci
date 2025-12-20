@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/images/logo-full.svg" alt="Dillanci Logo" width="400"/>
+<img src="frontend/public/images/logo-256h.png" alt="Dillanci Logo" height="80"/>
 
 # Dillanci
 
@@ -475,7 +475,7 @@ For support, please contact the development team or open an issue on GitHub.
 
 **Built with care by the Dillanci Team**
 
-<img src="frontend/public/images/icon.svg" alt="Dillanci Icon" width="60"/>
+<img src="frontend/public/images/icon-64.png" alt="Dillanci Icon" width="40"/>
 
 [![Made with Django](https://img.shields.io/badge/Made%20with-Django-092E20?style=flat-square&logo=django)](https://djangoproject.com)
 [![Made with React](https://img.shields.io/badge/Made%20with-React-61DAFB?style=flat-square&logo=react)](https://reactjs.org)
