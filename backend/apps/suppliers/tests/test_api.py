@@ -203,3 +203,69 @@ class TestSupplierInvalidTransitions:
             f'/api/v1/suppliers/{supplier.id}/submit_for_review/'
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestSupplierPortalManagement:
+    """Tests for supplier portal management endpoints."""
+
+    def test_invite_to_portal(self, authenticated_client, supplier):
+        """Can invite a contact to the supplier portal."""
+        supplier.submit_for_review()
+        supplier.approve()
+
+        response = authenticated_client.post(
+            f'/api/v1/suppliers/{supplier.id}/invite-to-portal/',
+            {
+                'email': 'portal@supplier.com',
+                'personal_message': 'Welcome to our portal!',
+            },
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert 'token' in response.data
+
+    def test_list_portal_invitations(self, authenticated_client, supplier):
+        """Can list portal invitations for a supplier."""
+        response = authenticated_client.get(
+            f'/api/v1/suppliers/{supplier.id}/portal-invitations/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
+    def test_list_portal_users(self, authenticated_client, supplier):
+        """Can list portal users for a supplier."""
+        response = authenticated_client.get(
+            f'/api/v1/suppliers/{supplier.id}/portal-users/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
+    def test_delete_supplier(self, authenticated_client, supplier):
+        """Can soft-delete a supplier."""
+        supplier_id = supplier.id
+        response = authenticated_client.delete(
+            f'/api/v1/suppliers/{supplier_id}/'
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        # Verify supplier is no longer accessible via normal query
+        assert not Supplier.objects.filter(id=supplier_id).exists()
+
+    def test_filter_suppliers_by_status(self, authenticated_client, supplier, organization):
+        """Can filter suppliers by status."""
+        # Create another supplier with different status
+        Supplier.objects.create(
+            name='Approved Supplier',
+            code='SUP002',
+            organization=organization,
+            status='APPROVED',
+        )
+        response = authenticated_client.get('/api/v1/suppliers/?status=APPROVED')
+        assert response.status_code == status.HTTP_200_OK
+        for s in response.data['results']:
+            assert s['status'] == 'APPROVED'
+
+    def test_search_suppliers(self, authenticated_client, supplier):
+        """Can search suppliers by name."""
+        response = authenticated_client.get('/api/v1/suppliers/?search=Test')
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['results']) >= 1

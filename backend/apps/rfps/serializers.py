@@ -673,7 +673,7 @@ class BAFORoundCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BAFORound
-        fields = ['instructions', 'deadline', 'focus_areas', 'created_by']
+        fields = ['rfp', 'instructions', 'deadline', 'focus_areas', 'created_by']
 
 
 # ============ Q&A Serializers ============

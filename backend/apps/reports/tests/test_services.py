@@ -156,7 +156,8 @@ class TestKPIService:
         assert 'TOTAL_SPEND_YTD' in kpis
         assert 'BUDGET_UTILIZATION' in kpis
         assert 'CONTRACT_COMPLIANCE' in kpis
-        assert len(kpis) == 12
+        # 12 base KPIs + 9 RFP-specific KPIs = 21 total
+        assert len(kpis) == 21
 
     def test_save_kpi_snapshot(self, organization):
         """Can save a KPI snapshot to database."""
@@ -171,8 +172,9 @@ class TestKPIService:
         service = KPIService(organization)
         kpis = service.save_all_kpi_snapshots()
 
-        assert len(kpis) == 12
-        assert DashboardKPI.objects.filter(organization=organization).count() >= 12
+        # 12 base KPIs + 9 RFP-specific KPIs = 21 total
+        assert len(kpis) == 21
+        assert DashboardKPI.objects.filter(organization=organization).count() >= 21
 
 
 @pytest.mark.django_db

@@ -98,14 +98,16 @@ export default defineConfig({
   ],
 
   // Run local dev server before starting the tests
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-    // Ignore if already running
-    ignoreHTTPSErrors: true,
-  },
+  // When using Docker, set E2E_SKIP_SERVER=true to use existing server
+  webServer: process.env.E2E_SKIP_SERVER
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: true,
+        timeout: 120000,
+        ignoreHTTPSErrors: true,
+      },
 
   // Output directory for test artifacts
   outputDir: 'test-results',

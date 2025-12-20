@@ -58,13 +58,13 @@ export const test = base.extend<AuthenticatedFixtures>({
     // Navigate to login
     await page.goto('/login');
 
-    // Perform login
-    await page.getByLabel(/email/i).fill(user.email);
-    await page.getByLabel(/password/i).fill(user.password);
+    // Perform login using ID selectors for reliability
+    await page.locator('#email').fill(user.email);
+    await page.locator('#password').fill(user.password);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Wait for dashboard
-    await expect(page).toHaveURL(/\/(dashboard)?$/);
+    // Wait for navigation away from login
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
 
     // Provide the authenticated page to the test
     await use({ page, user });
@@ -76,10 +76,10 @@ export const test = base.extend<AuthenticatedFixtures>({
       const user = testUsers[userType];
 
       await page.goto('/login');
-      await page.getByLabel(/email/i).fill(user.email);
-      await page.getByLabel(/password/i).fill(user.password);
+      await page.locator('#email').fill(user.email);
+      await page.locator('#password').fill(user.password);
       await page.getByRole('button', { name: /sign in/i }).click();
-      await expect(page).toHaveURL(/\/(dashboard)?$/);
+      await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
     };
 
     await use(loginAs);

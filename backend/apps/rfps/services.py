@@ -449,7 +449,7 @@ class RFPNotificationService:
             # Get all portal users for this supplier
             portal_users = PortalUser.objects.filter(
                 supplier=invitation.supplier,
-                is_active=True
+                access_status='ACTIVE'
             ).select_related('user')
 
             for portal_user in portal_users:
@@ -458,14 +458,14 @@ class RFPNotificationService:
                         user=portal_user.user,
                         notification_type='RFP_INVITATION',
                         title=f'New RFP Invitation: {rfp.title}',
-                        message=f'You have been invited to respond to RFP #{rfp.rfp_number}. '
+                        message=f'You have been invited to respond to RFP #{rfp.number}. '
                                 f'Submission deadline: {rfp.submission_deadline.strftime("%Y-%m-%d %H:%M") if rfp.submission_deadline else "No deadline set"}.',
                         priority='HIGH',
                         related_object_type='rfp',
                         related_object_id=rfp.id,
                         link=f'/portal/rfps/{rfp.id}',
                         metadata={
-                            'rfp_number': rfp.rfp_number,
+                            'rfp_number': rfp.number,
                             'supplier_id': str(invitation.supplier.id),
                             'submission_deadline': rfp.submission_deadline.isoformat() if rfp.submission_deadline else None,
                         }
@@ -485,7 +485,7 @@ class RFPNotificationService:
             user=rfp.created_by,
             notification_type='PROPOSAL_RECEIVED',
             title=f'New Proposal Received: {rfp.title}',
-            message=f'{proposal.supplier.name} has submitted a proposal for RFP #{rfp.rfp_number}. '
+            message=f'{proposal.supplier.name} has submitted a proposal for RFP #{rfp.number}. '
                     f'Proposal number: {proposal.proposal_number}.',
             priority='NORMAL',
             related_object_type='proposal',
@@ -493,7 +493,7 @@ class RFPNotificationService:
             link=f'/rfps/{rfp.id}?tab=proposals',
             metadata={
                 'rfp_id': str(rfp.id),
-                'rfp_number': rfp.rfp_number,
+                'rfp_number': rfp.number,
                 'proposal_number': proposal.proposal_number,
                 'supplier_name': proposal.supplier.name,
             }
@@ -512,7 +512,7 @@ class RFPNotificationService:
         # Get all portal users for this supplier
         portal_users = PortalUser.objects.filter(
             supplier=proposal.supplier,
-            is_active=True
+            access_status='ACTIVE'
         ).select_related('user')
 
         for portal_user in portal_users:
@@ -521,7 +521,7 @@ class RFPNotificationService:
                     user=portal_user.user,
                     notification_type='PROPOSAL_SHORTLISTED',
                     title=f'Your Proposal Has Been Shortlisted',
-                    message=f'Your proposal for RFP #{rfp.rfp_number} ({rfp.title}) has been shortlisted. '
+                    message=f'Your proposal for RFP #{rfp.number} ({rfp.title}) has been shortlisted. '
                             f'You may be contacted for further evaluation or a BAFO request.',
                     priority='HIGH',
                     related_object_type='proposal',
@@ -529,7 +529,7 @@ class RFPNotificationService:
                     link=f'/portal/rfps/{rfp.id}',
                     metadata={
                         'rfp_id': str(rfp.id),
-                        'rfp_number': rfp.rfp_number,
+                        'rfp_number': rfp.number,
                         'proposal_number': proposal.proposal_number,
                     }
                 )
@@ -557,7 +557,7 @@ class RFPNotificationService:
             # Get all portal users for this supplier
             portal_users = PortalUser.objects.filter(
                 supplier=proposal.supplier,
-                is_active=True
+                access_status='ACTIVE'
             ).select_related('user')
 
             for portal_user in portal_users:
@@ -566,7 +566,7 @@ class RFPNotificationService:
                         user=portal_user.user,
                         notification_type='BAFO_REQUESTED',
                         title=f'BAFO Request: {rfp.title}',
-                        message=f'A Best and Final Offer (BAFO) has been requested for RFP #{rfp.rfp_number}. '
+                        message=f'A Best and Final Offer (BAFO) has been requested for RFP #{rfp.number}. '
                                 f'Please submit your revised offer by '
                                 f'{bafo_round.deadline.strftime("%Y-%m-%d %H:%M") if bafo_round.deadline else "the specified deadline"}.',
                         priority='URGENT',
@@ -575,7 +575,7 @@ class RFPNotificationService:
                         link=f'/portal/rfps/{rfp.id}',
                         metadata={
                             'rfp_id': str(rfp.id),
-                            'rfp_number': rfp.rfp_number,
+                            'rfp_number': rfp.number,
                             'bafo_round_number': bafo_round.round_number,
                             'deadline': bafo_round.deadline.isoformat() if bafo_round.deadline else None,
                             'focus_areas': bafo_round.focus_areas,
@@ -596,14 +596,14 @@ class RFPNotificationService:
             notification_type='BAFO_RECEIVED',
             title=f'BAFO Response Received: {rfp.title}',
             message=f'{bafo_response.proposal.supplier.name} has submitted their BAFO response '
-                    f'for RFP #{rfp.rfp_number} (Round {bafo_response.bafo_round.round_number}).',
+                    f'for RFP #{rfp.number} (Round {bafo_response.bafo_round.round_number}).',
             priority='NORMAL',
             related_object_type='bafo_response',
             related_object_id=bafo_response.id,
             link=f'/rfps/{rfp.id}?tab=bafo',
             metadata={
                 'rfp_id': str(rfp.id),
-                'rfp_number': rfp.rfp_number,
+                'rfp_number': rfp.number,
                 'proposal_number': bafo_response.proposal.proposal_number,
                 'supplier_name': bafo_response.proposal.supplier.name,
                 'round_number': bafo_response.bafo_round.round_number,
@@ -635,7 +635,7 @@ class RFPNotificationService:
         for supplier in suppliers:
             portal_users = PortalUser.objects.filter(
                 supplier=supplier,
-                is_active=True
+                access_status='ACTIVE'
             ).select_related('user')
 
             for portal_user in portal_users:
@@ -644,14 +644,14 @@ class RFPNotificationService:
                         user=portal_user.user,
                         notification_type='RFP_QA_ANSWERED',
                         title=f'Q&A Update: {rfp.title}',
-                        message=f'A question has been answered for RFP #{rfp.rfp_number}.',
+                        message=f'A question has been answered for RFP #{rfp.number}.',
                         priority='NORMAL',
                         related_object_type='rfp_qa',
                         related_object_id=qa.id,
                         link=f'/portal/rfps/{rfp.id}?tab=qa',
                         metadata={
                             'rfp_id': str(rfp.id),
-                            'rfp_number': rfp.rfp_number,
+                            'rfp_number': rfp.number,
                         }
                     )
 
@@ -668,7 +668,7 @@ class RFPNotificationService:
         # Get all portal users for this supplier
         portal_users = PortalUser.objects.filter(
             supplier=proposal.supplier,
-            is_active=True
+            access_status='ACTIVE'
         ).select_related('user')
 
         for portal_user in portal_users:
@@ -677,7 +677,7 @@ class RFPNotificationService:
                     user=portal_user.user,
                     notification_type='PROPOSAL_AWARDED',
                     title=f'Congratulations! Your Proposal Has Been Awarded',
-                    message=f'Your proposal for RFP #{rfp.rfp_number} ({rfp.title}) has been awarded. '
+                    message=f'Your proposal for RFP #{rfp.number} ({rfp.title}) has been awarded. '
                             f'The procurement team will be in touch with next steps.',
                     priority='HIGH',
                     related_object_type='proposal',
@@ -685,7 +685,7 @@ class RFPNotificationService:
                     link=f'/portal/rfps/{rfp.id}',
                     metadata={
                         'rfp_id': str(rfp.id),
-                        'rfp_number': rfp.rfp_number,
+                        'rfp_number': rfp.number,
                         'proposal_number': proposal.proposal_number,
                     }
                 )
@@ -703,7 +703,7 @@ class RFPNotificationService:
         # Get all portal users for this supplier
         portal_users = PortalUser.objects.filter(
             supplier=proposal.supplier,
-            is_active=True
+            access_status='ACTIVE'
         ).select_related('user')
 
         for portal_user in portal_users:
@@ -712,7 +712,7 @@ class RFPNotificationService:
                     user=portal_user.user,
                     notification_type='PROPOSAL_NOT_AWARDED',
                     title=f'RFP Award Notification: {rfp.title}',
-                    message=f'Thank you for your proposal for RFP #{rfp.rfp_number}. '
+                    message=f'Thank you for your proposal for RFP #{rfp.number}. '
                             f'After careful evaluation, we have decided to proceed with another vendor. '
                             f'We appreciate your participation and hope to work with you in the future.',
                     priority='NORMAL',
@@ -721,7 +721,7 @@ class RFPNotificationService:
                     link=f'/portal/rfps/{rfp.id}',
                     metadata={
                         'rfp_id': str(rfp.id),
-                        'rfp_number': rfp.rfp_number,
+                        'rfp_number': rfp.number,
                         'proposal_number': proposal.proposal_number,
                     }
                 )
@@ -739,7 +739,7 @@ class RFPNotificationService:
         for invitation in invitations:
             portal_users = PortalUser.objects.filter(
                 supplier=invitation.supplier,
-                is_active=True
+                access_status='ACTIVE'
             ).select_related('user')
 
             for portal_user in portal_users:
@@ -748,13 +748,13 @@ class RFPNotificationService:
                         user=portal_user.user,
                         notification_type='RFP_CLOSED',
                         title=f'RFP Closed: {rfp.title}',
-                        message=f'RFP #{rfp.rfp_number} has been closed. Thank you for your participation.',
+                        message=f'RFP #{rfp.number} has been closed. Thank you for your participation.',
                         priority='NORMAL',
                         related_object_type='rfp',
                         related_object_id=rfp.id,
                         link=f'/portal/rfps/{rfp.id}',
                         metadata={
-                            'rfp_number': rfp.rfp_number,
+                            'rfp_number': rfp.number,
                         }
                     )
 
@@ -769,14 +769,14 @@ class RFPNotificationService:
             user=rfp.created_by,
             notification_type='RFP_EVALUATION_COMPLETE',
             title=f'Evaluation Complete: {rfp.title}',
-            message=f'All evaluators have completed scoring for RFP #{rfp.rfp_number}. '
+            message=f'All evaluators have completed scoring for RFP #{rfp.number}. '
                     f'You can now review the consensus scores and proceed with award.',
             priority='HIGH',
             related_object_type='rfp',
             related_object_id=rfp.id,
             link=f'/rfps/{rfp.id}?tab=evaluation',
             metadata={
-                'rfp_number': rfp.rfp_number,
+                'rfp_number': rfp.number,
             }
         )
 

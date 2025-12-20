@@ -1008,6 +1008,11 @@ class BAFORoundViewSet(viewsets.ModelViewSet):
     ordering_fields = ['round_number', 'created_at', 'opened_at']
     ordering = ['round_number']
 
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return BAFORoundCreateSerializer
+        return BAFORoundSerializer
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -1017,6 +1022,14 @@ class BAFORoundViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(rfp__organization=user.organization)
 
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create BAFO round and return full serializer."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save(created_by=request.user)
+        response_serializer = BAFORoundSerializer(instance)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def open(self, request, pk=None):

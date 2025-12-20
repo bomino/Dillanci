@@ -632,8 +632,9 @@ class TestBAFORounds:
         published_rfp.start_evaluation()
 
         response = authenticated_client.post(
-            f'/api/v1/rfps/{published_rfp.id}/bafo_rounds/',
+            '/api/v1/rfps/bafo-rounds/',
             {
+                'rfp': str(published_rfp.id),
                 'instructions': 'Please provide your best pricing',
                 'focus_areas': ['pricing', 'timeline'],
             },
@@ -651,10 +652,10 @@ class TestBAFORounds:
         BAFORound.objects.create(rfp=published_rfp, created_by=user)
 
         response = authenticated_client.get(
-            f'/api/v1/rfps/{published_rfp.id}/bafo_rounds/'
+            f'/api/v1/rfps/bafo-rounds/?rfp={published_rfp.id}'
         )
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
+        assert len(response.data['results']) == 1
 
     def test_open_bafo_round(
         self, authenticated_client, published_rfp, user

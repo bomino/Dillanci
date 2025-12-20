@@ -65,12 +65,12 @@ def admin_client(api_client, admin_user):
 
 @pytest.mark.django_db
 class TestLoginEndpoint:
-    """Tests for /api/v1/users/auth/login/"""
+    """Tests for /api/v1/auth/login/"""
 
     def test_login_with_valid_credentials(self, api_client, user):
         """Successful login returns user data."""
         response = api_client.post(
-            '/api/v1/users/auth/login/',
+            '/api/v1/auth/login/',
             {'email': 'user@example.com', 'password': 'testpass123'},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -80,7 +80,7 @@ class TestLoginEndpoint:
     def test_login_with_invalid_password(self, api_client, user):
         """Login fails with wrong password."""
         response = api_client.post(
-            '/api/v1/users/auth/login/',
+            '/api/v1/auth/login/',
             {'email': 'user@example.com', 'password': 'wrongpassword'},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -88,7 +88,7 @@ class TestLoginEndpoint:
     def test_login_with_nonexistent_user(self, api_client):
         """Login fails for non-existent user."""
         response = api_client.post(
-            '/api/v1/users/auth/login/',
+            '/api/v1/auth/login/',
             {'email': 'nobody@example.com', 'password': 'testpass123'},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -99,7 +99,7 @@ class TestLoginEndpoint:
         user.save()
 
         response = api_client.post(
-            '/api/v1/users/auth/login/',
+            '/api/v1/auth/login/',
             {'email': 'user@example.com', 'password': 'testpass123'},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -107,18 +107,18 @@ class TestLoginEndpoint:
 
 @pytest.mark.django_db
 class TestMeEndpoint:
-    """Tests for /api/v1/users/auth/me/"""
+    """Tests for /api/v1/auth/me/"""
 
     def test_get_current_user(self, authenticated_client, user):
         """Returns current authenticated user's data."""
-        response = authenticated_client.get('/api/v1/users/auth/me/')
+        response = authenticated_client.get('/api/v1/auth/me/')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == user.email
         assert response.data['full_name'] == user.full_name
 
     def test_unauthenticated_request(self, api_client):
         """Unauthenticated requests are rejected."""
-        response = api_client.get('/api/v1/users/auth/me/')
+        response = api_client.get('/api/v1/auth/me/')
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -171,3 +171,225 @@ class TestUserViewSet:
         user.refresh_from_db()
         assert user.status == 'ACTIVE'
         assert user.is_active is True
+
+    def test_admin_can_suspend_user(self, admin_client, user):
+        """Admin can suspend a user."""
+        response = admin_client.post(f'/api/v1/users/{user.id}/suspend/')
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.status == 'SUSPENDED'
+
+    def test_admin_can_get_user_roles(self, admin_client, user):
+        """Admin can get user's role assignments."""
+        response = admin_client.get(f'/api/v1/users/{user.id}/roles/')
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+
+    def test_admin_can_get_user_permissions(self, admin_client, user):
+        """Admin can get user's effective permissions."""
+        response = admin_client.get(f'/api/v1/users/{user.id}/permissions/')
+        assert response.status_code == status.HTTP_200_OK
+        assert 'permissions' in response.data
+
+    def test_admin_can_filter_users_by_status(self, admin_client, user, admin_user):
+        """Admin can filter users by status."""
+        response = admin_client.get('/api/v1/users/?status=ACTIVE')
+        assert response.status_code == status.HTTP_200_OK
+        for u in response.data['results']:
+            assert u['status'] == 'ACTIVE'
+
+    def test_admin_can_filter_users_by_organization(self, admin_client, organization, user):
+        """Admin can filter users by organization."""
+        response = admin_client.get(f'/api/v1/users/?organization={organization.id}')
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestLogoutEndpoint:
+    """Tests for /api/v1/auth/logout/"""
+
+    def test_logout_success(self, authenticated_client):
+        """Authenticated user can logout."""
+        response = authenticated_client.post('/api/v1/auth/logout/')
+        assert response.status_code == status.HTTP_200_OK
+        assert 'message' in response.data
+
+    def test_logout_requires_auth(self, api_client):
+        """Logout requires authentication."""
+        response = api_client.post('/api/v1/auth/logout/')
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestPasswordChangeEndpoint:
+    """Tests for /api/v1/auth/password/"""
+
+    def test_change_password_success(self, authenticated_client, user):
+        """User can change their password with valid data."""
+        response = authenticated_client.post(
+            '/api/v1/auth/password/',
+            {
+                'old_password': 'testpass123',
+                'new_password': 'NewSecure123!',
+            },
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert 'message' in response.data
+
+    def test_change_password_wrong_current(self, authenticated_client, user):
+        """Password change fails with wrong current password."""
+        response = authenticated_client.post(
+            '/api/v1/auth/password/',
+            {
+                'old_password': 'wrongpassword',
+                'new_password': 'NewSecure123!',
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_change_password_too_short(self, authenticated_client, user):
+        """Password change fails when new password too short."""
+        response = authenticated_client.post(
+            '/api/v1/auth/password/',
+            {
+                'old_password': 'testpass123',
+                'new_password': 'short',
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_change_password_requires_auth(self, api_client):
+        """Password change requires authentication."""
+        response = api_client.post(
+            '/api/v1/auth/password/',
+            {
+                'old_password': 'testpass123',
+                'new_password': 'NewSecure123!',
+            },
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestMeEndpointPatch:
+    """Tests for PATCH /api/v1/auth/me/"""
+
+    def test_update_profile(self, authenticated_client, user):
+        """User can update their own profile."""
+        response = authenticated_client.patch(
+            '/api/v1/auth/me/',
+            {'first_name': 'Updated', 'last_name': 'Name'},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.first_name == 'Updated'
+        assert user.last_name == 'Name'
+
+
+@pytest.mark.django_db
+class TestRoleViewSet:
+    """Tests for /api/v1/roles/"""
+
+    @pytest.fixture
+    def role(self, db, organization):
+        """Create a test role."""
+        from apps.users.models import Role
+        return Role.objects.create(
+            organization=organization,
+            name='Test Role',
+            code='TEST_ROLE',
+            permissions=['requisition.view', 'requisition.create'],
+        )
+
+    def test_list_roles_requires_auth(self, api_client):
+        """Role list requires authentication."""
+        response = api_client.get('/api/v1/roles/')
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_list_roles(self, admin_client, role):
+        """Admin user can list roles."""
+        response = admin_client.get('/api/v1/roles/')
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_admin_can_create_role(self, admin_client, organization):
+        """Admin can create a new role."""
+        response = admin_client.post(
+            '/api/v1/roles/',
+            {
+                'organization': str(organization.id),
+                'name': 'New Role',
+                'code': 'NEW_ROLE',
+                'permissions': ['requisition.view'],
+            },
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_get_role_presets(self, admin_client):
+        """Admin can get role presets."""
+        response = admin_client.get('/api/v1/roles/presets/')
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) > 0
+
+    def test_get_permissions_list(self, admin_client):
+        """Admin can get available permissions."""
+        response = admin_client.get('/api/v1/roles/permissions/')
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestRoleAssignment:
+    """Tests for role assignment endpoints."""
+
+    @pytest.fixture
+    def role(self, db, organization):
+        """Create a test role."""
+        from apps.users.models import Role
+        return Role.objects.create(
+            organization=organization,
+            name='Test Role',
+            code='TEST_ROLE',
+            permissions=['requisition.view'],
+        )
+
+    def test_assign_role_to_user(self, admin_client, user, role):
+        """Admin can assign a role to a user."""
+        response = admin_client.post(
+            f'/api/v1/users/{user.id}/assign-role/',
+            {'role_id': str(role.id)},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_assign_duplicate_role_fails(self, admin_client, user, role):
+        """Assigning the same role twice fails."""
+        # First assignment
+        admin_client.post(
+            f'/api/v1/users/{user.id}/assign-role/',
+            {'role_id': str(role.id)},
+            format='json',
+        )
+        # Second assignment should fail
+        response = admin_client.post(
+            f'/api/v1/users/{user.id}/assign-role/',
+            {'role_id': str(role.id)},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_remove_role_from_user(self, admin_client, user, role):
+        """Admin can remove a role from a user."""
+        # First assign the role
+        admin_client.post(
+            f'/api/v1/users/{user.id}/assign-role/',
+            {'role_id': str(role.id)},
+            format='json',
+        )
+        # Then remove it
+        response = admin_client.post(
+            f'/api/v1/users/{user.id}/remove-role/',
+            {'role_id': str(role.id)},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK
