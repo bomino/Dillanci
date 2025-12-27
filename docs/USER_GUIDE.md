@@ -65,6 +65,19 @@ Dillanci covers the complete procurement lifecycle:
 1. Open your web browser and navigate to your organization's Dillanci URL
 2. You will see the login page with the Dillanci logo
 
+**Default Access URLs (Development):**
+| URL | Description |
+|-----|-------------|
+| http://localhost:3000 | Frontend Application |
+| http://localhost:8000/admin/ | Django Admin Panel |
+| http://localhost:8000/api/docs/ | API Documentation |
+
+**Default User Credentials:**
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@dillanci.com` | `Admin123!` | Superuser |
+| `test@example.com` | `Test123!` | Staff |
+
 ### Logging In
 
 1. Enter your **Email** address

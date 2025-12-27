@@ -247,7 +247,35 @@ Permissions follow the pattern `module.action` (e.g., `requisition.create`, `pur
 - `frontend/src/components/auth/ProtectedRoute.tsx` - Route guards
 - `frontend/src/components/layout/Sidebar.tsx` - Permission-filtered navigation
 
+## Default User Credentials
+
+| Email | Password | Organization | Role |
+|-------|----------|--------------|------|
+| `admin@dillanci.com` | `Admin123!` | Dillanci Demo | Superuser |
+| `test@example.com` | `Test123!` | Test Org | Staff |
+
+**Access URLs:**
+- Frontend: http://localhost:3000
+- Django Admin: http://localhost:8000/admin/
+- API Docs: http://localhost:8000/api/docs/
+
 ## Documentation
 
 - **[User Guide](docs/USER_GUIDE.md)** - Comprehensive user documentation (2000+ lines)
 - **[Workflow Guide](docs/WORKFLOW_DOCUMENTATION.md)** - Detailed procurement workflows
+- **[Security Audit](docs/SECURITY_AUDIT.md)** - Security assessment and recommendations
+- **[Database Backups](docs/DATABASE_BACKUPS.md)** - Backup and restore procedures
+- **[Load Testing](docs/LOAD_TESTING.md)** - Performance testing with Locust
+- **[CDN & Monitoring](docs/CDN_MONITORING.md)** - Production monitoring setup
+
+## Production Readiness
+
+Current score: **95/100** (see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md))
+
+Key security features:
+- Rate limiting on authentication endpoints
+- XSS prevention with input sanitization
+- CSRF protection with trusted origins
+- Session security (HttpOnly, SameSite cookies)
+- Comprehensive audit logging
+- OWASP Top 10 coverage

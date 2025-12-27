@@ -11,8 +11,9 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-[![Tests](https://img.shields.io/badge/Tests-841%20Passing-success?style=flat-square)](https://github.com/bomino/Dillanci)
-[![Coverage](https://img.shields.io/badge/Coverage-82%25-brightgreen?style=flat-square)](https://github.com/bomino/Dillanci)
+[![Tests](https://img.shields.io/badge/Tests-1083%20Passing-success?style=flat-square)](https://github.com/bomino/Dillanci)
+[![Coverage](https://img.shields.io/badge/Coverage-75%25-brightgreen?style=flat-square)](https://github.com/bomino/Dillanci)
+[![Production Ready](https://img.shields.io/badge/Production%20Ready-95%2F100-blue?style=flat-square)](PRODUCTION_READINESS.md)
 [![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](LICENSE)
 
 <br/>
@@ -60,6 +61,10 @@
 ### Documentation
 - **[User Guide](docs/USER_GUIDE.md)** - Comprehensive user documentation for all platform modules
 - **[Workflow Guide](docs/WORKFLOW_DOCUMENTATION.md)** - Detailed procurement workflows including REQ→PO conversion
+- **[Security Audit](docs/SECURITY_AUDIT.md)** - Security assessment and recommendations
+- **[Database Backups](docs/DATABASE_BACKUPS.md)** - Backup and restore procedures
+- **[Load Testing](docs/LOAD_TESTING.md)** - Performance testing with Locust
+- **[CDN & Monitoring](docs/CDN_MONITORING.md)** - Production monitoring setup
 
 ## Tech Stack
 
@@ -166,6 +171,13 @@ Dillanci/
    | http://localhost:8000/api/docs/ | Swagger API Documentation |
    | http://localhost:8000/api/redoc/ | ReDoc API Documentation |
    | http://localhost:8000/api/v1/ | API Base URL |
+
+   **Default User Credentials:**
+
+   | Email | Password | Organization | Role |
+   |-------|----------|--------------|------|
+   | `admin@dillanci.com` | `Admin123!` | Dillanci Demo | Superuser |
+   | `test@example.com` | `Test123!` | Test Org | Staff |
 
 ### Local Development
 
@@ -364,7 +376,8 @@ import { RequirePermission, RequireAdmin } from '@/components/auth/ProtectedRout
 
 ### Admin Login
 - URL: http://localhost:8000/admin/
-- Default credentials: Set via `createsuperuser` command
+- Default credentials: `admin@dillanci.com` / `Admin123!`
+- The "View Site" link redirects to the React frontend at http://localhost:3000
 
 ## API Documentation
 
@@ -448,9 +461,10 @@ Dillanci uses the **Sahel "Warm Industrial"** design palette:
 - **Mono**: JetBrains Mono
 
 ## Backend Stats
-- **841 tests passing**
-- **82%+ code coverage**
+- **1,083 tests passing**
+- **75%+ code coverage**
 - **16 Django apps**
+- **Production readiness score: 95/100**
 
 ## Contributing
 

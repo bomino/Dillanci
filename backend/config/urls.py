@@ -38,6 +38,7 @@ core_router.register(r'attachments', AttachmentViewSet, basename='attachment')
 admin.site.site_header = 'Dillanci Administration'
 admin.site.site_title = 'Dillanci Admin'
 admin.site.index_title = 'Enterprise Procurement Platform'
+admin.site.site_url = settings.FRONTEND_URL  # "View Site" link points to React app
 
 
 urlpatterns = [
