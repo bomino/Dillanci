@@ -24,12 +24,14 @@ import {
   Send,
   Loader2,
   Copy,
-  ExternalLink,
   Settings,
+  TrendingUp,
+  RefreshCw,
+  Star,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -59,6 +61,8 @@ import {
   usePortalInvitations,
   usePortalUsers,
   supplierTypeConfig,
+  performanceTierConfig,
+  useRecalculateSupplierScores,
 } from '@/lib/api/suppliers';
 import type { SupplierPayload, PortalInvitation, PortalUser } from '@/lib/api/suppliers';
 import { formatDateTime } from '@/lib/utils';
@@ -90,6 +94,7 @@ export default function SupplierDetailPage() {
   const approveMutation = useApproveSupplier();
   const suspendMutation = useSuspendSupplier();
   const inviteMutation = useInviteToPortal();
+  const recalculateScoresMutation = useRecalculateSupplierScores();
 
   // Form for invite dialog
   const inviteForm = useForm<InviteFormValues>({
@@ -143,6 +148,21 @@ export default function SupplierDetailPage() {
     }
   };
 
+  const handleRecalculateScores = async () => {
+    if (!id) return;
+    try {
+      await recalculateScoresMutation.mutateAsync(id);
+      toast.success('Scores Updated', {
+        description: 'Performance scores have been recalculated.',
+      });
+    } catch (error) {
+      console.error('Failed to recalculate scores:', error);
+      toast.error('Error', {
+        description: 'Failed to recalculate scores. Please try again.',
+      });
+    }
+  };
+
   const handleInviteToPortal = async (data: InviteFormValues) => {
     if (!id) return;
     try {
@@ -176,17 +196,6 @@ export default function SupplierDetailPage() {
     setInviteDialogOpen(false);
     setLastInvitation(null);
     inviteForm.reset();
-  };
-
-  // Get status badge variant for invitation status
-  const getInvitationStatusVariant = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'warning';
-      case 'ACCEPTED': return 'success';
-      case 'EXPIRED': return 'neutral';
-      case 'REVOKED': return 'danger';
-      default: return 'neutral';
-    }
   };
 
   // Loading state
@@ -522,6 +531,105 @@ export default function SupplierDetailPage() {
               )}
               {!supplier.email && !supplier.phone && !supplier.website && (
                 <p className="text-sm text-neutral-400">No contact information</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Performance Scores */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-neutral-400" />
+                  <CardTitle>Performance</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRecalculateScores}
+                  disabled={recalculateScoresMutation.isPending}
+                  className="h-8 px-2"
+                  title="Recalculate scores"
+                >
+                  {recalculateScoresMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Overall Score and Tier */}
+              <div className="text-center p-4 bg-neutral-50 rounded-lg">
+                {supplier.overall_score ? (
+                  <>
+                    <div className="text-3xl font-bold text-neutral-900">
+                      {parseFloat(supplier.overall_score).toFixed(0)}%
+                    </div>
+                    {supplier.performance_tier && (
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full ${performanceTierConfig[supplier.performance_tier]?.bgColor || 'bg-neutral-100'} ${performanceTierConfig[supplier.performance_tier]?.color || 'text-neutral-600'}`}>
+                          {supplier.is_preferred && <Star className="h-3 w-3 mr-1" />}
+                          {performanceTierConfig[supplier.performance_tier]?.label || 'Not Rated'}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-neutral-400 text-sm">
+                    No scores calculated yet
+                  </div>
+                )}
+              </div>
+
+              {/* Score Breakdown */}
+              {supplier.overall_score && (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Delivery</span>
+                      <span className="font-medium">{supplier.delivery_score ? `${parseFloat(supplier.delivery_score).toFixed(0)}%` : '-'}</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full"
+                        style={{ width: `${supplier.delivery_score || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Quality</span>
+                      <span className="font-medium">{supplier.quality_score ? `${parseFloat(supplier.quality_score).toFixed(0)}%` : '-'}</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full"
+                        style={{ width: `${supplier.quality_score || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Cost</span>
+                      <span className="font-medium">{supplier.cost_score ? `${parseFloat(supplier.cost_score).toFixed(0)}%` : '-'}</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                      <div
+                        className="bg-amber-500 h-2 rounded-full"
+                        style={{ width: `${supplier.cost_score || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Last Calculated */}
+              {supplier.scores_calculated_at && (
+                <div className="text-xs text-neutral-500 text-center">
+                  Last updated: {formatDateTime(supplier.scores_calculated_at)}
+                </div>
               )}
             </CardContent>
           </Card>

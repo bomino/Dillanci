@@ -318,6 +318,90 @@ class SupplierPerformanceService:
 
         return results
 
+    def update_supplier_scores(
+        self,
+        supplier_id: Optional[str] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+    ) -> dict:
+        """
+        Calculate and persist performance scores to Supplier model.
+
+        This method calculates scores from actual performance data and
+        saves them to the Supplier record for quick filtering and display.
+
+        Args:
+            supplier_id: Optional UUID of a specific supplier to update.
+                        If None, updates all approved suppliers.
+            date_from: Start date for calculations (default: last 12 months).
+            date_to: End date for calculations (default: today).
+
+        Returns:
+            Dict with update summary.
+        """
+        # Default to last 12 months if not specified
+        if not date_to:
+            date_to = timezone.now().date()
+        if not date_from:
+            date_from = date_to - timedelta(days=365)
+
+        if supplier_id:
+            suppliers = Supplier.objects.filter(
+                id=supplier_id,
+                organization=self.organization,
+                is_deleted=False,
+            )
+        else:
+            suppliers = Supplier.objects.filter(
+                organization=self.organization,
+                status='APPROVED',
+                is_deleted=False,
+            )
+
+        updated_count = 0
+        for supplier in suppliers:
+            # Calculate scores
+            delivery = self._calc_on_time_delivery(supplier, date_from, date_to)
+            quality = self._calc_invoice_accuracy(supplier, date_from, date_to)
+            cost = self._calc_fulfillment_rate(supplier, date_from, date_to)
+            overall = (delivery + quality + cost) / 3
+
+            # Determine tier based on overall score
+            if overall >= 90:
+                tier = 'STRATEGIC'
+            elif overall >= 80:
+                tier = 'PREFERRED'
+            elif overall >= 70:
+                tier = 'APPROVED'
+            elif overall >= 60:
+                tier = 'CONDITIONAL'
+            else:
+                tier = 'PROBATION'
+
+            # Update supplier record
+            supplier.overall_score = round(overall, 2)
+            supplier.delivery_score = delivery
+            supplier.quality_score = quality
+            supplier.cost_score = cost
+            supplier.scores_calculated_at = timezone.now()
+            supplier.performance_tier = tier
+
+            supplier.save(update_fields=[
+                'overall_score',
+                'delivery_score',
+                'quality_score',
+                'cost_score',
+                'scores_calculated_at',
+                'performance_tier',
+            ])
+            updated_count += 1
+
+        return {
+            'updated_count': updated_count,
+            'date_from': date_from,
+            'date_to': date_to,
+        }
+
     def execute(
         self,
         filters: dict,

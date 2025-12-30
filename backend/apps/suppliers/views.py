@@ -372,3 +372,70 @@ class SupplierViewSet(ExportMixin, viewsets.ModelViewSet):
         invitation.revoke()
         serializer = PortalInvitationSerializer(invitation, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='recalculate-scores')
+    def recalculate_scores(self, request, pk=None):
+        """
+        Recalculate performance scores for a single supplier.
+
+        POST /api/v1/suppliers/{id}/recalculate-scores/
+
+        Calculates scores from actual performance data (POs, invoices, receipts)
+        and persists them to the supplier record.
+        """
+        from apps.reports.services.supplier_service import SupplierPerformanceService
+
+        supplier = self.get_object()
+        user = request.user
+
+        if not user.organization:
+            return Response(
+                {'error': 'User must belong to an organization'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        service = SupplierPerformanceService(user.organization)
+        result = service.update_supplier_scores(supplier_id=str(supplier.id))
+
+        supplier.refresh_from_db()
+        serializer = SupplierSerializer(supplier)
+        return Response({
+            'message': 'Scores recalculated successfully',
+            'supplier': serializer.data,
+            'calculation_period': {
+                'from': result['date_from'],
+                'to': result['date_to'],
+            }
+        })
+
+    @action(detail=False, methods=['post'], url_path='recalculate-all-scores')
+    def recalculate_all_scores(self, request):
+        """
+        Recalculate performance scores for all approved suppliers.
+
+        POST /api/v1/suppliers/recalculate-all-scores/
+
+        This is a batch operation that calculates scores for all approved
+        suppliers in the user's organization.
+        """
+        from apps.reports.services.supplier_service import SupplierPerformanceService
+
+        user = request.user
+
+        if not user.organization:
+            return Response(
+                {'error': 'User must belong to an organization'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        service = SupplierPerformanceService(user.organization)
+        result = service.update_supplier_scores()
+
+        return Response({
+            'message': f'Scores recalculated for {result["updated_count"]} suppliers',
+            'updated_count': result['updated_count'],
+            'calculation_period': {
+                'from': result['date_from'],
+                'to': result['date_to'],
+            }
+        })

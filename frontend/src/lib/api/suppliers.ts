@@ -635,3 +635,61 @@ export const supplierTypeConfig: Record<string, { label: string }> = {
   CONTRACTOR: { label: 'Contractor' },
   OTHER: { label: 'Other' },
 };
+
+// Performance tier configuration
+export type PerformanceTier = 'STRATEGIC' | 'PREFERRED' | 'APPROVED' | 'CONDITIONAL' | 'PROBATION' | '';
+
+export const performanceTierConfig: Record<PerformanceTier, { label: string; color: string; bgColor: string }> = {
+  STRATEGIC: { label: 'Strategic Partner', color: 'text-purple-700', bgColor: 'bg-purple-100' },
+  PREFERRED: { label: 'Preferred', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
+  APPROVED: { label: 'Approved', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  CONDITIONAL: { label: 'Conditional', color: 'text-amber-700', bgColor: 'bg-amber-100' },
+  PROBATION: { label: 'Probation', color: 'text-red-700', bgColor: 'bg-red-100' },
+  '': { label: 'Not Rated', color: 'text-slate-500', bgColor: 'bg-slate-100' },
+};
+
+// Score recalculation types
+export interface RecalculateScoresResponse {
+  message: string;
+  supplier?: Supplier;
+  updated_count?: number;
+  calculation_period: {
+    from: string;
+    to: string;
+  };
+}
+
+// Recalculate scores API functions
+export async function recalculateSupplierScores(supplierId: string): Promise<RecalculateScoresResponse> {
+  const response = await apiClient.post(`/suppliers/${supplierId}/recalculate-scores/`);
+  return response.data;
+}
+
+export async function recalculateAllSupplierScores(): Promise<RecalculateScoresResponse> {
+  const response = await apiClient.post('/suppliers/recalculate-all-scores/');
+  return response.data;
+}
+
+// React Query hooks for score recalculation
+export function useRecalculateSupplierScores() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: recalculateSupplierScores,
+    onSuccess: (_, supplierId) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers', supplierId] });
+    },
+  });
+}
+
+export function useRecalculateAllSupplierScores() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: recalculateAllSupplierScores,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+    },
+  });
+}

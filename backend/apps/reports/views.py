@@ -1060,3 +1060,101 @@ class ReportAnalyticsViewSet(viewsets.ViewSet):
             'quality_issues': quality_issues,
             'avg_lead_time': '8.5 days',  # Placeholder
         })
+
+    @action(detail=False, methods=['get'], url_path='supplier-scorecard/(?P<supplier_id>[^/.]+)')
+    def supplier_scorecard(self, request, supplier_id=None):
+        """
+        Get detailed scorecard for a single supplier.
+
+        Returns comprehensive performance metrics for the specified supplier.
+        """
+        from apps.reports.services.supplier_service import SupplierPerformanceService
+
+        organization = request.user.organization
+        if not organization:
+            return Response(
+                {'error': 'User must belong to an organization'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = SupplierPerformanceService(organization)
+        scorecard = service.get_supplier_scorecard(supplier_id)
+
+        if 'error' in scorecard:
+            return Response(
+                {'error': scorecard['error']},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(scorecard)
+
+    @action(detail=False, methods=['get'], url_path='supplier-rankings')
+    def supplier_rankings(self, request):
+        """
+        Get ranked list of all suppliers by performance score.
+
+        Query params:
+        - limit: Maximum number of suppliers (default 20)
+        """
+        from apps.reports.services.supplier_service import SupplierPerformanceService
+
+        organization = request.user.organization
+        if not organization:
+            return Response([])
+
+        limit = int(request.query_params.get('limit', 20))
+
+        service = SupplierPerformanceService(organization)
+        rankings = service.get_all_supplier_rankings(limit=limit)
+
+        return Response(rankings)
+
+    @action(detail=False, methods=['get'], url_path='supplier-tier-distribution')
+    def supplier_tier_distribution(self, request):
+        """
+        Get distribution of suppliers across performance tiers.
+        """
+        from django.db.models import Count
+        from apps.suppliers.models import Supplier
+
+        organization = request.user.organization
+        if not organization:
+            return Response([])
+
+        tier_counts = Supplier.objects.filter(
+            organization=organization,
+            status='APPROVED',
+            is_deleted=False,
+        ).exclude(
+            performance_tier=''
+        ).values('performance_tier').annotate(
+            count=Count('id')
+        ).order_by('performance_tier')
+
+        tier_colors = {
+            'STRATEGIC': '#9333ea',
+            'PREFERRED': '#10b981',
+            'APPROVED': '#3b82f6',
+            'CONDITIONAL': '#f59e0b',
+            'PROBATION': '#ef4444',
+        }
+
+        tier_labels = {
+            'STRATEGIC': 'Strategic Partner',
+            'PREFERRED': 'Preferred',
+            'APPROVED': 'Approved',
+            'CONDITIONAL': 'Conditional',
+            'PROBATION': 'Probation',
+        }
+
+        result = []
+        for item in tier_counts:
+            tier = item['performance_tier']
+            result.append({
+                'tier': tier,
+                'label': tier_labels.get(tier, tier),
+                'count': item['count'],
+                'color': tier_colors.get(tier, '#6b7280'),
+            })
+
+        return Response(result)

@@ -64,6 +64,39 @@ export interface ReceivingMetrics {
   avg_lead_time: string;
 }
 
+export interface SupplierScorecard {
+  supplier_id: string;
+  supplier_name: string;
+  overall_score: number;
+  on_time_delivery: number;
+  invoice_accuracy: number;
+  fulfillment_rate: number;
+  total_pos: number;
+  total_spend: number;
+  total_invoices: number;
+  total_receipts: number;
+  performance_tier?: string;
+  scores_calculated_at?: string;
+}
+
+export interface SupplierRanking {
+  id: string;
+  name: string;
+  overall_score: number;
+  delivery_score: number;
+  quality_score: number;
+  cost_score: number;
+  performance_tier: string;
+  is_preferred: boolean;
+}
+
+export interface TierDistribution {
+  tier: string;
+  label: string;
+  count: number;
+  color: string;
+}
+
 /**
  * Reports API endpoints
  */
@@ -139,6 +172,32 @@ export const reportsApi = {
    */
   getReceivingMetrics: async (): Promise<ReceivingMetrics> => {
     const response = await apiClient.get<ReceivingMetrics>('/reports/analytics/receiving-metrics/');
+    return response.data;
+  },
+
+  /**
+   * Get detailed scorecard for a single supplier
+   */
+  getSupplierScorecard: async (supplierId: string): Promise<SupplierScorecard> => {
+    const response = await apiClient.get<SupplierScorecard>(`/reports/analytics/supplier-scorecard/${supplierId}/`);
+    return response.data;
+  },
+
+  /**
+   * Get ranked list of all suppliers by performance score
+   */
+  getSupplierRankings: async (limit: number = 20): Promise<SupplierRanking[]> => {
+    const response = await apiClient.get<SupplierRanking[]>('/reports/analytics/supplier-rankings/', {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get distribution of suppliers across performance tiers
+   */
+  getSupplierTierDistribution: async (): Promise<TierDistribution[]> => {
+    const response = await apiClient.get<TierDistribution[]>('/reports/analytics/supplier-tier-distribution/');
     return response.data;
   },
 };

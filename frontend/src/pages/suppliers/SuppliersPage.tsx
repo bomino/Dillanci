@@ -49,6 +49,7 @@ import {
   useSuspendSupplier,
   useReactivateSupplier,
   supplierTypeConfig,
+  performanceTierConfig,
 } from '@/lib/api/suppliers';
 import { formatDate } from '@/lib/utils';
 import type { Supplier, SupplierStatus, SupplierFilters } from '@/types';
@@ -234,6 +235,56 @@ export default function SuppliersPage() {
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: 'overall_score',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Score" />
+      ),
+      cell: ({ row }) => {
+        const score = row.original.overall_score;
+        if (!score) return <span className="text-neutral-400">-</span>;
+        const numScore = parseFloat(score);
+        const colorClass =
+          numScore >= 90 ? 'text-purple-700' :
+          numScore >= 80 ? 'text-emerald-700' :
+          numScore >= 70 ? 'text-blue-700' :
+          numScore >= 60 ? 'text-amber-700' :
+          'text-red-700';
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-12 bg-neutral-200 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full ${
+                  numScore >= 90 ? 'bg-purple-500' :
+                  numScore >= 80 ? 'bg-emerald-500' :
+                  numScore >= 70 ? 'bg-blue-500' :
+                  numScore >= 60 ? 'bg-amber-500' :
+                  'bg-red-500'
+                }`}
+                style={{ width: `${numScore}%` }}
+              />
+            </div>
+            <span className={`text-sm font-medium ${colorClass}`}>{numScore.toFixed(0)}%</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'performance_tier',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Tier" />
+      ),
+      cell: ({ row }) => {
+        const tier = row.original.performance_tier;
+        if (!tier) return <span className="text-neutral-400">-</span>;
+        const config = performanceTierConfig[tier] || performanceTierConfig[''];
+        return (
+          <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${config.bgColor} ${config.color}`}>
+            {config.label}
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'city',

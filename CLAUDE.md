@@ -279,3 +279,55 @@ Key security features:
 - Session security (HttpOnly, SameSite cookies)
 - Comprehensive audit logging
 - OWASP Top 10 coverage
+
+## Recent Features
+
+### Supplier Performance System
+
+**Performance Scoring (0-100 scale):**
+- `overall_score` - Weighted average of all metrics
+- `delivery_score` - On-time delivery rate
+- `quality_score` - Invoice accuracy rate
+- `cost_score` - Order fulfillment rate
+
+**Performance Tiers:**
+| Tier | Score Range | Description |
+|------|-------------|-------------|
+| STRATEGIC | 90-100 | Strategic Partner |
+| PREFERRED | 80-89 | Preferred Supplier |
+| APPROVED | 70-79 | Approved Supplier |
+| CONDITIONAL | 60-69 | Conditional - needs improvement |
+| PROBATION | 0-59 | Probation - at risk |
+
+**API Endpoints:**
+```
+POST /api/v1/suppliers/{id}/recalculate-scores/   # Recalculate single supplier
+POST /api/v1/suppliers/recalculate-all-scores/    # Recalculate all suppliers
+GET  /api/v1/reports/analytics/supplier-scorecard/{id}/  # Get supplier scorecard
+GET  /api/v1/reports/analytics/supplier-rankings/        # Get all rankings
+GET  /api/v1/reports/analytics/supplier-tier-distribution/  # Tier distribution
+```
+
+**Frontend Pages:**
+- `/suppliers` - Suppliers list with Score and Tier columns
+- `/suppliers/:id` - Supplier detail with Performance card and recalculate button
+- `/suppliers/performance` - Performance dashboard with charts (Pie, Radar, Bar)
+
+### RFQ Duplication
+
+Allows users to duplicate existing RFQs to quickly create new ones:
+
+```
+POST /api/v1/rfqs/{id}/duplicate/
+```
+
+**What Gets Duplicated:**
+- Title (with " (Copy)" suffix), Description, Bid Type
+- Commercial Terms, Delivery Terms, Evaluation Criteria, T&C
+- All RFQ Line Items
+
+**What Does NOT Get Duplicated:**
+- Status (always DRAFT), RFQ Number (auto-generated)
+- Dates, Supplier Invitations, Bids
+
+**Frontend:** Duplicate button on RFQ detail page (requires `RFQ_CREATE` permission)

@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-import { SuppliersPage, SupplierDetailPage, CreateSupplierPage } from '@/pages/suppliers';
+import { SuppliersPage, SupplierDetailPage, CreateSupplierPage, SupplierPerformancePage } from '@/pages/suppliers';
 import { RequisitionsPage, RequisitionDetailPage, CreateRequisitionPage } from '@/pages/requisitions';
 import { RFQsPage, RFQDetailPage, CreateRFQPage } from '@/pages/rfqs';
 import { PurchaseOrdersPage, PODetailPage, CreatePOPage } from '@/pages/purchase-orders';
@@ -243,6 +243,11 @@ function App() {
               <Route path="/suppliers/:id/edit" element={
                 <ProtectedRoute permission={Permissions.SUPPLIER_EDIT}>
                   <SupplierDetailPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/suppliers/performance" element={
+                <ProtectedRoute anyPermission={[Permissions.SUPPLIER_VIEW, Permissions.REPORT_VIEW]}>
+                  <SupplierPerformancePage />
                 </ProtectedRoute>
               } />
 

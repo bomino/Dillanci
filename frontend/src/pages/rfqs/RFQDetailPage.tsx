@@ -14,6 +14,7 @@ import {
   Calendar,
   Package,
   Users,
+  Copy,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ import {
   useCloseRFQ,
   useAwardRFQ,
   useCancelRFQ,
+  useDuplicateRFQ,
   useVendorQuotes,
   useApprovedSuppliers,
   mockSuppliers,
@@ -74,6 +76,7 @@ export default function RFQDetailPage() {
   const closeMutation = useCloseRFQ();
   const awardMutation = useAwardRFQ();
   const cancelMutation = useCancelRFQ();
+  const duplicateMutation = useDuplicateRFQ();
 
   // Check for success message from create page
   const successMessage = location.state?.message;
@@ -135,6 +138,18 @@ export default function RFQDetailPage() {
       await cancelMutation.mutateAsync(id);
     } catch (error) {
       console.error('Failed to cancel RFQ:', error);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!id) return;
+    try {
+      const newRFQ = await duplicateMutation.mutateAsync(id);
+      navigate(`/rfqs/${newRFQ.id}`, {
+        state: { message: 'RFQ duplicated successfully' },
+      });
+    } catch (error) {
+      console.error('Failed to duplicate RFQ:', error);
     }
   };
 
@@ -336,6 +351,16 @@ export default function RFQDetailPage() {
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
+            </Button>
+          )}
+          {rfq.status !== 'CANCELLED' && (
+            <Button
+              variant="outline"
+              onClick={handleDuplicate}
+              disabled={duplicateMutation.isPending}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate'}
             </Button>
           )}
         </div>

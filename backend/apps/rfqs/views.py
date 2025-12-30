@@ -130,6 +130,24 @@ class RFQViewSet(viewsets.ModelViewSet):
         rfq = self.get_object()
         return self._handle_workflow_action(rfq, rfq.cancel)
 
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """
+        Duplicate an RFQ with all its line items.
+
+        Creates a new RFQ in DRAFT status with:
+        - Copied title (with " (Copy)" suffix)
+        - All line items cloned
+        - New auto-generated RFQ number
+        - Supplier invitations and bids NOT copied
+
+        Returns the newly created RFQ.
+        """
+        rfq = self.get_object()
+        new_rfq = rfq.duplicate(created_by=request.user)
+        serializer = RFQSerializer(new_rfq)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['get', 'post'])
     def lines(self, request, pk=None):
         """

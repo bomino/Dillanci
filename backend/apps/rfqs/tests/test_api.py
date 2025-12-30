@@ -599,3 +599,137 @@ class TestRFQInvalidTransitions:
             f'/api/v1/rfqs/{open_rfq.id}/open_for_bids/'
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestRFQDuplicate:
+    """Tests for RFQ duplication endpoint."""
+
+    def test_duplicate_draft_rfq(self, authenticated_client, rfq_with_line, user):
+        """Can duplicate a DRAFT RFQ."""
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{rfq_with_line.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['status'] == 'DRAFT'
+        assert response.data['title'] == 'Test RFQ (Copy)'
+        assert response.data['number'] != rfq_with_line.number
+        assert len(response.data['lines']) == 1
+
+        # Verify new RFQ was created in database
+        new_rfq = RFQ.objects.get(id=response.data['id'])
+        assert new_rfq.created_by == user
+        assert new_rfq.lines.count() == 1
+
+    def test_duplicate_open_rfq(self, authenticated_client, open_rfq):
+        """Can duplicate an OPEN RFQ - new RFQ should be DRAFT."""
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{open_rfq.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['status'] == 'DRAFT'  # Always starts as DRAFT
+        assert '(Copy)' in response.data['title']
+
+    def test_duplicate_awarded_rfq(
+        self, authenticated_client, open_rfq, bid_with_lines
+    ):
+        """Can duplicate an AWARDED RFQ - new RFQ should be DRAFT."""
+        # Submit bid while RFQ is OPEN, then close and award
+        bid_with_lines.submit()
+        open_rfq.close_bids()
+        open_rfq.award(bid_with_lines)
+
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{open_rfq.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['status'] == 'DRAFT'
+
+        # Verify award info is NOT copied
+        assert response.data['awarded_supplier'] is None
+        assert response.data['awarded_bid'] is None
+
+    def test_duplicate_copies_all_lines(self, authenticated_client, rfq_with_line):
+        """Duplicate copies all line items."""
+        # Add another line
+        RFQLine.objects.create(
+            rfq=rfq_with_line,
+            description='Second Item',
+            quantity=Decimal('20'),
+            unit_of_measure='KG',
+            target_unit_price=Decimal('50.00'),
+        )
+
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{rfq_with_line.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data['lines']) == 2
+
+        # Verify line details are copied
+        lines = response.data['lines']
+        descriptions = {line['description'] for line in lines}
+        assert 'Test Item' in descriptions
+        assert 'Second Item' in descriptions
+
+    def test_duplicate_does_not_copy_invitations(
+        self, authenticated_client, rfq_with_invitation
+    ):
+        """Duplicate does NOT copy supplier invitations."""
+        assert rfq_with_invitation.invitations.count() == 1
+
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{rfq_with_invitation.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+        new_rfq = RFQ.objects.get(id=response.data['id'])
+        assert new_rfq.invitations.count() == 0
+
+    def test_duplicate_does_not_copy_bids(
+        self, authenticated_client, open_rfq, bid_with_lines
+    ):
+        """Duplicate does NOT copy bids."""
+        assert open_rfq.bids.count() == 1
+
+        response = authenticated_client.post(
+            f'/api/v1/rfqs/{open_rfq.id}/duplicate/'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+        new_rfq = RFQ.objects.get(id=response.data['id'])
+        assert new_rfq.bids.count() == 0
+
+    def test_duplicate_copies_commercial_terms(self, authenticated_client, rfq):
+        """Duplicate copies commercial terms and evaluation criteria."""
+        # Set additional fields
+        rfq.payment_terms = 'NET45'
+        rfq.delivery_terms = 'FOB'
+        rfq.currency = 'EUR'
+        rfq.evaluation_criteria = [
+            {'name': 'Price', 'weight': 60},
+            {'name': 'Quality', 'weight': 40},
+        ]
+        rfq.terms_and_conditions = 'Standard terms apply.'
+        rfq.nda_required = True
+        rfq.save()
+
+        # Add a line so we can see it in response
+        RFQLine.objects.create(
+            rfq=rfq,
+            description='Test Item',
+            quantity=Decimal('10'),
+            unit_of_measure='EA',
+        )
+
+        response = authenticated_client.post(f'/api/v1/rfqs/{rfq.id}/duplicate/')
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['payment_terms'] == 'NET45'
+        assert response.data['delivery_terms'] == 'FOB'
+        assert response.data['currency'] == 'EUR'
+        assert response.data['evaluation_criteria'] == [
+            {'name': 'Price', 'weight': 60},
+            {'name': 'Quality', 'weight': 40},
+        ]
+        assert response.data['terms_and_conditions'] == 'Standard terms apply.'
+        assert response.data['nda_required'] is True

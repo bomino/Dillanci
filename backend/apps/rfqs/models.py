@@ -273,6 +273,75 @@ class RFQ(SoftDeleteModel):
         self.status = 'CANCELLED'
         self.save(update_fields=['status', 'updated_at'])
 
+    def duplicate(self, created_by):
+        """
+        Create a copy of this RFQ with all line items.
+
+        The new RFQ will:
+        - Have a new auto-generated number
+        - Start in DRAFT status
+        - Copy all line items
+        - NOT copy supplier invitations or bids
+        - Reset all dates to null
+
+        Args:
+            created_by: The user creating the duplicate
+
+        Returns:
+            RFQ: The newly created duplicate RFQ
+        """
+        # Create the new RFQ with copied fields
+        new_rfq = RFQ.objects.create(
+            organization=self.organization,
+            created_by=created_by,
+            title=f"{self.title} (Copy)",
+            description=self.description,
+            status='DRAFT',
+            bid_type=self.bid_type,
+            # Buyer info - use current user's info if available
+            buyer_name=created_by.full_name or self.buyer_name,
+            buyer_email=created_by.email or self.buyer_email,
+            buyer_phone=self.buyer_phone,
+            department=self.department,
+            # Project background
+            project_background=self.project_background,
+            # Commercial terms
+            payment_terms=self.payment_terms,
+            payment_terms_notes=self.payment_terms_notes,
+            contract_duration_months=self.contract_duration_months,
+            contract_renewal_options=self.contract_renewal_options,
+            currency=self.currency,
+            # Delivery requirements
+            delivery_address=self.delivery_address,
+            delivery_terms=self.delivery_terms,
+            required_delivery_date=self.required_delivery_date,
+            # Evaluation criteria
+            evaluation_criteria=self.evaluation_criteria,
+            required_certifications=self.required_certifications,
+            required_attachments_description=self.required_attachments_description,
+            # Terms and conditions
+            terms_and_conditions=self.terms_and_conditions,
+            nda_required=self.nda_required,
+            # Link to same requisition if applicable
+            requisition=self.requisition,
+            # Dates and award info are intentionally NOT copied
+            # number is auto-generated, status is DRAFT
+        )
+
+        # Clone all line items
+        for line in self.lines.all():
+            RFQLine.objects.create(
+                rfq=new_rfq,
+                # line_number is auto-assigned in save()
+                description=line.description,
+                quantity=line.quantity,
+                unit_of_measure=line.unit_of_measure,
+                target_unit_price=line.target_unit_price,
+                catalog_item=line.catalog_item,
+            )
+
+        return new_rfq
+
 
 class RFQLine(SoftDeleteModel):
     """Line item in an RFQ."""

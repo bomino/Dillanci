@@ -11,6 +11,7 @@ import uuid
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -78,6 +79,65 @@ class Supplier(SoftDeleteModel):
     state = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=20, blank=True)
     country = models.CharField(max_length=100, default='USA')
+
+    # Performance scores (0-100 scale)
+    overall_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='Overall performance score (0-100)',
+    )
+    delivery_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='On-time delivery score (0-100)',
+    )
+    quality_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='Invoice accuracy/quality score (0-100)',
+    )
+    cost_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='Order fulfillment/cost score (0-100)',
+    )
+
+    # Performance metadata
+    scores_calculated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When scores were last calculated',
+    )
+    is_preferred = models.BooleanField(
+        default=False,
+        help_text='Preferred vendor flag',
+    )
+
+    TIER_CHOICES = [
+        ('STRATEGIC', 'Strategic Partner'),
+        ('PREFERRED', 'Preferred'),
+        ('APPROVED', 'Approved'),
+        ('CONDITIONAL', 'Conditional'),
+        ('PROBATION', 'Probation'),
+    ]
+    performance_tier = models.CharField(
+        max_length=20,
+        choices=TIER_CHOICES,
+        blank=True,
+        help_text='Performance tier based on overall score',
+    )
 
     class Meta:
         db_table = 'supplier'

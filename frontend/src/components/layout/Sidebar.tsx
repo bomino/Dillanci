@@ -18,6 +18,7 @@ import {
   GitBranch,
   ClipboardList,
   Building2,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui-store';
@@ -78,6 +79,12 @@ const mainNavItems: NavItem[] = [
     icon: <Users className="h-5 w-5" />,
     href: '/suppliers',
     anyPermission: [Permissions.SUPPLIER_VIEW, Permissions.SUPPLIER_CREATE],
+  },
+  {
+    label: 'Supplier Performance',
+    icon: <TrendingUp className="h-5 w-5" />,
+    href: '/suppliers/performance',
+    anyPermission: [Permissions.SUPPLIER_VIEW, Permissions.REPORT_VIEW],
   },
   {
     label: 'Contracts',

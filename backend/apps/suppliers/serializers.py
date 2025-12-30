@@ -16,6 +16,9 @@ class SupplierSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source='get_status_display', read_only=True
     )
+    performance_tier_display = serializers.CharField(
+        source='get_performance_tier_display', read_only=True
+    )
 
     class Meta:
         model = Supplier
@@ -39,6 +42,15 @@ class SupplierSerializer(serializers.ModelSerializer):
             'state',
             'postal_code',
             'country',
+            # Performance scores
+            'overall_score',
+            'delivery_score',
+            'quality_score',
+            'cost_score',
+            'scores_calculated_at',
+            'is_preferred',
+            'performance_tier',
+            'performance_tier_display',
             'created_at',
             'updated_at',
         ]
@@ -48,6 +60,13 @@ class SupplierSerializer(serializers.ModelSerializer):
             'approved_at',
             'blocked_at',
             'rejected_at',
+            # Performance scores are calculated, not user-editable
+            'overall_score',
+            'delivery_score',
+            'quality_score',
+            'cost_score',
+            'scores_calculated_at',
+            'performance_tier',
             'created_at',
             'updated_at',
         ]
@@ -80,6 +99,9 @@ class SupplierListSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(
         source='organization.name', read_only=True
     )
+    performance_tier_display = serializers.CharField(
+        source='get_performance_tier_display', read_only=True
+    )
 
     class Meta:
         model = Supplier
@@ -93,6 +115,11 @@ class SupplierListSerializer(serializers.ModelSerializer):
             'contact_email',
             'city',
             'country',
+            # Performance summary for list view
+            'overall_score',
+            'performance_tier',
+            'performance_tier_display',
+            'is_preferred',
         ]
 
 

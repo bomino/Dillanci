@@ -302,6 +302,8 @@ export type SupplierStatus =
   | 'SUSPENDED'
   | 'BLOCKED';
 
+export type PerformanceTier = 'STRATEGIC' | 'PREFERRED' | 'APPROVED' | 'CONDITIONAL' | 'PROBATION' | '';
+
 export interface Supplier {
   id: string;
   number: string;
@@ -324,6 +326,15 @@ export interface Supplier {
   payment_terms: string;
   currency: string;
   is_active: boolean;
+  // Performance scores (0-100 scale)
+  overall_score: string | null;
+  delivery_score: string | null;
+  quality_score: string | null;
+  cost_score: string | null;
+  scores_calculated_at: string | null;
+  is_preferred: boolean;
+  performance_tier: PerformanceTier;
+  performance_tier_display: string | null;
   created_at: string;
   updated_at: string;
 }

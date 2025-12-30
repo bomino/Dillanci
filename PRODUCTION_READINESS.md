@@ -2,7 +2,7 @@
 
 **Project:** Dillanci - Enterprise Procurement Platform
 **Assessment Date:** December 20, 2024
-**Last Updated:** December 20, 2024
+**Last Updated:** December 30, 2024
 **Assessed By:** Claude Code
 
 ---
@@ -60,6 +60,14 @@
 | Database Backups | ✅ Added | Automated backup/restore scripts with S3 support |
 | Secrets Management | ✅ Documented | AWS Secrets Manager, Vault, Azure Key Vault guides |
 | Backup Documentation | ✅ Added | Complete disaster recovery runbook |
+
+### New Features (December 30, 2024) ✅ COMPLETED
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| RFQ Duplication | ✅ Added | Clone existing RFQs with all line items |
+| Supplier Performance Scores | ✅ Added | Persistent scores (0-100) with performance tiers |
+| Supplier Performance Dashboard | ✅ Added | Charts, rankings, tier distribution at `/suppliers/performance` |
 
 ---
 
