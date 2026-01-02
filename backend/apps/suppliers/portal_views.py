@@ -315,8 +315,8 @@ class PortalBidCreateView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check due date
-        if rfq.due_date and rfq.due_date < timezone.now():
+        # Check submission deadline
+        if rfq.submission_deadline and rfq.submission_deadline < timezone.now():
             return Response(
                 {'error': 'The bidding deadline has passed'},
                 status=status.HTTP_400_BAD_REQUEST

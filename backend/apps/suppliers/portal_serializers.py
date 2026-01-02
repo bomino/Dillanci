@@ -174,7 +174,7 @@ class PortalRFQLineSerializer(serializers.ModelSerializer):
         model = RFQLine
         fields = [
             'id', 'line_number', 'description', 'quantity',
-            'unit_of_measure', 'specifications', 'target_price',
+            'unit_of_measure', 'target_unit_price',
         ]
 
 
@@ -189,7 +189,7 @@ class PortalRFQListSerializer(serializers.ModelSerializer):
         model = RFQ
         fields = [
             'id', 'number', 'title', 'status', 'organization_name',
-            'due_date', 'line_count', 'has_submitted_bid', 'created_at',
+            'submission_deadline', 'line_count', 'has_submitted_bid', 'created_at',
         ]
 
     def get_has_submitted_bid(self, obj):
@@ -210,7 +210,7 @@ class PortalRFQDetailSerializer(serializers.ModelSerializer):
         model = RFQ
         fields = [
             'id', 'number', 'title', 'description', 'status',
-            'organization_name', 'due_date', 'terms_and_conditions',
+            'organization_name', 'submission_deadline', 'terms_and_conditions',
             'lines', 'my_bid', 'created_at',
         ]
 
@@ -243,13 +243,13 @@ class PortalBidSerializer(serializers.ModelSerializer):
 
     lines = PortalBidLineSerializer(many=True)
     rfq_number = serializers.CharField(source='rfq.number', read_only=True)
+    total_amount = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
 
     class Meta:
         model = Bid
         fields = [
             'id', 'rfq', 'rfq_number', 'status', 'total_amount',
-            'validity_days', 'delivery_terms', 'payment_terms',
-            'notes', 'lines', 'submitted_at', 'created_at',
+            'valid_until', 'notes', 'lines', 'submitted_at', 'created_at',
         ]
         read_only_fields = ['id', 'status', 'total_amount', 'submitted_at', 'created_at']
 
